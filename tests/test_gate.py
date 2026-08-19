@@ -37,10 +37,13 @@ def attestation(status="OK", cross_ok=True, legs=("bandit", "gitleaks", "semgrep
     }
 
 
-def run(findings, att, exceptions=None):
+PROJECT = "owner/repo"
+
+
+def run(findings, att, exceptions=None, project=PROJECT):
     return gate.evaluate(
         {"findings": findings, "disagreements": []}, att, POLICY,
-        exceptions or {"exceptions": []}, today=TODAY,
+        exceptions or {"exceptions": []}, today=TODAY, scanned_project=project,
     )
 
 
@@ -117,10 +120,10 @@ def test_corroboration_does_not_change_severity():
 
 
 # -------------------------------------------------------------- exceptions --
-def exc(fid="sha256:aaa", expires=FUTURE, **kw):
+def exc(fid="sha256:aaa", expires=FUTURE, project=PROJECT, **kw):
     base = {"id": fid, "reason": "r", "approver": "a@b.c", "expires": expires}
     base.update(kw)
-    return {"exceptions": [base]}
+    return {"project": project, "exceptions": [base]}
 
 
 def test_valid_exception_suppresses():
@@ -166,3 +169,35 @@ def test_no_thresholds_hardcoded_in_gate():
     src = open("normalizer/gate.py").read()
     for token in ("B314", "critical", '"high"', "0.5"):
         assert token not in src, f"{token!r} should live in policy.yaml"
+
+
+# ----------------------------------------------------------------- binding --
+def test_exceptions_bound_to_the_wrong_repo_are_refused():
+    """One repo's trust assumptions must never be applied to another's.
+
+    "not attacker-supplied in the current deployment" is true of
+    kev-epss-prioritizer's scanner exports and FALSE of YARAdec's .yarc input.
+    The same rule at an identical-looking sink has opposite verdicts.
+    """
+    v = run([finding()], attestation(), exc(project="owner/other-repo"))
+    assert v.binding_error and "owner/other-repo" in v.binding_error
+    assert not v.suppressed          # nothing applied
+    assert v.blocked                 # the finding stands
+    assert v.exit_code == 1
+
+
+def test_exceptions_without_a_project_key_are_refused():
+    v = run([finding()], attestation(), exc(project=None))
+    assert v.binding_error and "no `project:` key" in v.binding_error
+    assert not v.suppressed and v.exit_code == 1
+
+
+def test_empty_exceptions_need_no_binding():
+    """An absent exceptions file is normal, not an error."""
+    v = run([], attestation(), {})
+    assert v.binding_error is None and v.exit_code == 0
+
+
+def test_matching_project_applies_suppressions():
+    v = run([finding()], attestation(), exc(project=PROJECT))
+    assert v.binding_error is None and len(v.suppressed) == 1 and v.exit_code == 0

@@ -282,3 +282,22 @@ def test_fixtures_are_labelled():
     for name in ("gitleaks.sarif", "trivy-fs-populated.sarif"):
         assert "SYNTHETIC" in load(name)["_fixture_note"]
     assert "never depended on Django" in load("trivy-fs-populated.sarif")["_fixture_note"]
+
+
+def test_shallow_clone_is_unverifiable_not_a_pass():
+    """A --depth 1 clone makes `git rev-list --count HEAD` return 1.
+
+    examined == denominator == 1, so the row would PASS while gitleaks has seen
+    one commit of an unknown-length history. Measuring the truncation is not
+    measuring the population.
+    """
+    deep = GitleaksAdapter().parse(ScanRun(
+        tool="gitleaks", documents={"findings": load("gitleaks.sarif")},
+        probes={"commits": 1, "shallow": 0}, stderr="INF 1 commits scanned."))
+    shallow = GitleaksAdapter().parse(ScanRun(
+        tool="gitleaks", documents={"findings": load("gitleaks.sarif")},
+        probes={"commits": 1, "shallow": 1}, stderr="INF 1 commits scanned."))
+    assert deep.coverage.status is CoverageStatus.OK
+    assert shallow.coverage.status is CoverageStatus.FAIL_UNVERIFIABLE
+    assert "SHALLOW" in shallow.coverage.evidence
+    assert "fetch-depth: 0" in shallow.coverage.detail

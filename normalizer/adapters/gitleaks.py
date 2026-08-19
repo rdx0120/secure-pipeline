@@ -98,10 +98,27 @@ class GitleaksAdapter:
             examined = None
             evidence = "none: gitleaks SARIF has no invocations or artifacts"
 
+        # A SHALLOW checkout caps history scanning silently. `git rev-list
+        # --count HEAD` returns 1 on a --depth 1 clone, so examined == denominator
+        # and the row PASSES while gitleaks has seen exactly one commit of an
+        # unknown-length history. The denominator is measuring the truncation,
+        # not the population -- so the honest status is UNVERIFIABLE.
+        shallow = bool(run.probes.get("shallow"))
         coverage = Coverage.assess(
-            tool=self.tool, unit=self.unit, examined=examined, floor=self.floor,
-            evidence=evidence,
-            denominator=run.probes.get("commits"),
-            denominator_source="runner probe: git rev-list --count HEAD",
+            tool=self.tool, unit=self.unit,
+            examined=None if shallow else examined,
+            floor=self.floor,
+            evidence=(
+                "none: checkout is SHALLOW, true history length is unknown"
+                if shallow else evidence
+            ),
+            denominator=None if shallow else run.probes.get("commits"),
+            denominator_source=(
+                None if shallow else "runner probe: git rev-list --count HEAD"
+            ),
+            detail=(
+                "clone with fetch-depth: 0 so secret scanning covers full history"
+                if shallow else None
+            ),
         )
         return AdapterResult(findings=findings, coverage=coverage)

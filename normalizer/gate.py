@@ -43,6 +43,7 @@ class Verdict:
     suppressed: list[dict] = field(default_factory=list)
     coverage_failures: list[dict] = field(default_factory=list)
     policy_violations: list[str] = field(default_factory=list)
+    binding_error: str | None = None
     disagreements: list[dict] = field(default_factory=list)
 
     @property
@@ -50,7 +51,7 @@ class Verdict:
         # Coverage wins: an untrustworthy finding list is not worth gating on.
         if self.coverage_failures:
             return 2
-        if self.blocked or self.policy_violations:
+        if self.binding_error or self.blocked or self.policy_violations:
             return 1
         return 0
 
@@ -66,6 +67,47 @@ def load(path: Path) -> dict:
 # --------------------------------------------------------------------------
 # exceptions
 # --------------------------------------------------------------------------
+
+def project_identity(root: Path) -> str | None:
+    """The scanned repo's identity, from its origin remote.
+
+    Bound to identity rather than path so the same checkout is the same project
+    on a laptop and a CI runner.
+    """
+    import subprocess
+    r = subprocess.run(["git", "-C", str(root), "remote", "get-url", "origin"],
+                       capture_output=True, text=True, check=False)
+    if r.returncode != 0:
+        return None
+    url = r.stdout.strip()
+    url = url.removesuffix(".git").removeprefix("git@github.com:")
+    url = url.replace("https://github.com/", "")
+    return url.lower() or None
+
+
+def check_binding(exceptions: dict, scanned: str | None) -> str | None:
+    """Refuse to apply one repo's trust assumptions to another's.
+
+    Exceptions are federated: they live in the consumer repo, are written by
+    people with standing in that codebase, and encode ITS trust boundary. The
+    kev-epss-prioritizer suppression reads "not attacker-supplied in the current
+    deployment" -- a sentence that is FALSE about YARAdec, where .yarc input is
+    attacker-controlled by definition. The same rule at an identical-looking
+    sink has opposite verdicts in the two repos, so pointing the wrong file at
+    the wrong repo must fail loudly and specifically rather than degrade into a
+    pile of confusing "stale entry" messages.
+    """
+    declared = (exceptions.get("project") or "").lower().strip()
+    if not (exceptions.get("exceptions") or []):
+        return None                     # nothing to misapply
+    if not declared:
+        return ("exceptions file declares no `project:` key; refusing to apply "
+                "suppressions that cannot be bound to a repository")
+    if scanned and declared != scanned:
+        return (f"exceptions file declares project {declared!r}, "
+                f"scanned repo is {scanned!r}")
+    return None
+
 
 def check_exceptions(
     exceptions: dict, policy: dict, finding_ids: set[str], today: dt.date
@@ -160,12 +202,18 @@ def check_coverage(attestation: dict, policy: dict) -> list[dict]:
 # --------------------------------------------------------------------------
 
 def evaluate(findings_doc: dict, attestation: dict, policy: dict,
-             exceptions: dict, today: dt.date | None = None) -> Verdict:
+             exceptions: dict, today: dt.date | None = None,
+             scanned_project: str | None = None) -> Verdict:
     today = today or dt.date.today()
     v = Verdict()
     findings = findings_doc.get("findings", [])
     ids = {f["id"] for f in findings}
 
+    v.binding_error = check_binding(exceptions, scanned_project)
+    if v.binding_error:
+        # Do not evaluate suppressions we could not bind. Applying them would
+        # be exactly the mistake this check exists to prevent.
+        exceptions = {"exceptions": []}
     active, v.policy_violations = check_exceptions(exceptions, policy, ids, today)
     v.coverage_failures = check_coverage(attestation, policy)
     v.disagreements = findings_doc.get("disagreements", [])
@@ -212,6 +260,12 @@ def render(v: Verdict) -> str:
     out.append(f"  suppressed:  {len(v.suppressed)} (active exceptions)")
     out.append(f"  below floor: {v.ignored}")
     out.append("")
+
+    if v.binding_error:
+        out.append("EXCEPTION BINDING ERROR")
+        out.append(f"  {v.binding_error}")
+        out.append("  No suppressions were applied.")
+        out.append("")
 
     if v.coverage_failures:
         out.append("COVERAGE FAILURES -- the scan could not see")
@@ -267,10 +321,12 @@ def render(v: Verdict) -> str:
 
 
 def main(findings_doc: dict, attestation: dict, policy_path: Path,
-         exceptions_path: Path, json_path: Path | None = None) -> int:
+         exceptions_path: Path, json_path: Path | None = None,
+         root: Path | None = None) -> int:
     policy = load(policy_path)
-    exceptions = load(exceptions_path)
-    v = evaluate(findings_doc, attestation, policy, exceptions)
+    exceptions = load(exceptions_path) if exceptions_path.exists() else {}
+    v = evaluate(findings_doc, attestation, policy, exceptions,
+                 scanned_project=project_identity(root) if root else None)
     print(render(v))
     if json_path:
         json_path.write_text(json.dumps({
@@ -279,6 +335,7 @@ def main(findings_doc: dict, attestation: dict, policy_path: Path,
             "suppressed": v.suppressed, "below_floor": v.ignored,
             "coverage_failures": v.coverage_failures,
             "policy_violations": v.policy_violations,
+            "binding_error": v.binding_error,
             "disagreements": v.disagreements,
         }, indent=2))
     return v.exit_code

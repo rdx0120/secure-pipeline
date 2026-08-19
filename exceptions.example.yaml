@@ -1,0 +1,22 @@
+# Every exception is a dated, attributed, expiring decision.
+#
+# This is the mechanism that makes a policy engine different from a `# noqa`
+# sprinkle: a suppression here has an owner and a deadline, and the expiry, the
+# staleness check, AND the max-age cap all fail the build. Stale entries are
+# the quiet danger -- an exception whose finding no longer exists will silently
+# re-authorize that finding the day it comes back.
+version: 1
+
+# TEMPLATE. A live copy of this belongs in the CONSUMER repo at
+# .security/exceptions.yaml, not here. secure-pipeline ships policy.yaml
+# (centrally governed); each consumer ships its own exceptions (locally
+# governed). Expiry is what keeps federation from becoming abdication.
+project: owner/repo
+
+exceptions:
+  # - id: "sha256:..."
+  #   reason: >-
+  #     Why this is acceptable IN THIS CODEBASE, including the trust boundary
+  #     assumption it depends on.
+  #   approver: someone@example.com
+  #   expires: "2026-12-31"

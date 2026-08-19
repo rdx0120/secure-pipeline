@@ -58,3 +58,29 @@ def seek_checked(fh, size):
     if offset >= size:
         raise ValueError("offset past end of arena")
     fh.seek(offset)
+
+
+# --- idioms found in a real arena parser (YARAdec) ---------------------------
+# v1 of this rule missed both of these and fired zero times on that codebase.
+
+def tuple_target_unchecked(data):
+    # ruleid: unbounded-binary-read
+    b_off, b_size = struct.unpack_from("<QI", data, 0)
+    return data[b_off:b_size]
+
+
+def derived_bound_unchecked(data):
+    # ruleid: unbounded-binary-read
+    b_off, b_size = struct.unpack_from("<QI", data, 0)
+    end = b_off + b_size
+    return data[b_off:end]
+
+
+def derived_bound_checked(data):
+    # This is what YARAdec actually does, and it must stay silent.
+    # ok: unbounded-binary-read
+    b_off, b_size = struct.unpack_from("<QI", data, 0)
+    end = b_off + b_size
+    if b_size and end > len(data):
+        raise ValueError("buffer runs past end of file")
+    return data[b_off:end]

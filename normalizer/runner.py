@@ -27,6 +27,9 @@ class Probes:
     python_files_on_disk: int
     python_files_git_tracked: int
     commits: int
+    #: True when the checkout is shallow. A shallow clone silently caps what
+    #: any history-scanning tool can see.
+    shallow: bool
     resolvable_packages: int
     declared_dependencies: int
     lockfile_packages: int
@@ -36,6 +39,7 @@ class Probes:
             "python_files_on_disk": self.python_files_on_disk,
             "python_files_git_tracked": self.python_files_git_tracked,
             "commits": self.commits,
+            "shallow": int(self.shallow),
             "packages": self.resolvable_packages,
             "declared_dependencies": self.declared_dependencies,
             "lockfile_packages": self.lockfile_packages,
@@ -78,6 +82,8 @@ def probe(root: Path, trivy_pkg_json: Path | None = None) -> Probes:
     on_disk = len([p for p in root.rglob("*.py") if ".git" not in p.parts])
     tracked = _run(["git", "ls-files", "*.py"], root).stdout.split()
     commits = _run(["git", "rev-list", "--count", "HEAD"], root).stdout.strip()
+    shallow = _run(["git", "rev-parse", "--is-shallow-repository"],
+                   root).stdout.strip() == "true"
 
     packages = 0
     if trivy_pkg_json and trivy_pkg_json.exists() and trivy_pkg_json.stat().st_size:
@@ -108,6 +114,7 @@ def probe(root: Path, trivy_pkg_json: Path | None = None) -> Probes:
         python_files_on_disk=on_disk,
         python_files_git_tracked=len(tracked),
         commits=int(commits) if commits.isdigit() else 0,
+        shallow=shallow,
         resolvable_packages=packages,
         declared_dependencies=declared,
         lockfile_packages=lockfile_packages,

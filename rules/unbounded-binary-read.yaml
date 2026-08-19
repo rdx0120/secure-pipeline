@@ -16,6 +16,16 @@ rules:
       confidence: MEDIUM
       references:
         - https://cwe.mitre.org/data/definitions/1284.html
+      # IDIOM NOTE -- rewritten after meeting a real arena parser.
+      #
+      # v1 matched only `length = struct.unpack(...)[0]` followed by a direct
+      # use. Against YARAdec it fired ZERO times, and a deliberately-unsafe
+      # probe showed why: it caught 1 of 3 real idioms. Binary parsers
+      # overwhelmingly write `b_off, b_size = struct.unpack_from(...)` and then
+      # slice on a DERIVED bound (`end = b_off + b_size`). Both were invisible.
+      # A rule that only sees the textbook form is a rule that does not work on
+      # binary parsers, which is the only place it matters.
+      #
       # IMPLEMENTATION NOTE -- this rule is search mode, not taint mode, and
       # that is a deliberate consequence of testing it rather than assuming.
       #
@@ -32,6 +42,7 @@ rules:
       # own check.
     patterns:
       - pattern-either:
+          # --- direct use of the decoded value ---------------------------
           - pattern: |
               $LEN = $DECODE
               ...
@@ -43,11 +54,11 @@ rules:
           - pattern: |
               $LEN = $DECODE
               ...
-              bytearray($LEN)
+              $BUF[$A:$LEN]
           - pattern: |
               $LEN = $DECODE
               ...
-              bytes($LEN)
+              bytearray($LEN)
           - pattern: |
               $LEN = $DECODE
               ...
@@ -56,6 +67,36 @@ rules:
               $LEN = $DECODE
               ...
               $F.seek($LEN)
+          # --- TUPLE targets: the dominant idiom in real parsers ----------
+          - pattern: |
+              $A, $LEN = $DECODE
+              ...
+              $BUF[$X:$LEN]
+          - pattern: |
+              $A, $LEN = $DECODE
+              ...
+              $BUF[$X:<... $LEN ...>]
+          - pattern: |
+              $A, $LEN = $DECODE
+              ...
+              bytearray($LEN)
+          - pattern: |
+              $A, $LEN = $DECODE
+              ...
+              $F.read($LEN)
+          # --- DERIVED bounds: end = off + size, then slice on `end` ------
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              $END = <... $LEN ...>
+              ...
+              $BUF[$X:$END]
+          - pattern: |
+              $A, $LEN = $DECODE
+              ...
+              $END = <... $LEN ...>
+              ...
+              $BUF[$X:$END]
       - metavariable-pattern:
           metavariable: $DECODE
           patterns:
@@ -65,28 +106,61 @@ rules:
                 - pattern: struct.unpack_from(...)
                 - pattern: struct.unpack_from(...)[...]
                 - pattern: int.from_bytes(...)
-      # A bounds check between the decode and the use clears the finding.
+      # A comparison of the decoded value OR anything derived from it, between
+      # the decode and the use, clears the finding.
       - pattern-not: |
           $LEN = $DECODE
           ...
-          if $LEN > $LIMIT:
+          if <... $LEN ...> > $LIMIT:
             ...
           ...
       - pattern-not: |
           $LEN = $DECODE
           ...
-          if $LEN >= $LIMIT:
+          if <... $LEN ...> >= $LIMIT:
             ...
           ...
       - pattern-not: |
           $LEN = $DECODE
           ...
-          if $LEN < $LIMIT:
+          if <... $LEN ...> < $LIMIT:
+            ...
+          ...
+      - pattern-not: |
+          $A, $LEN = $DECODE
+          ...
+          if <... $LEN ...> > $LIMIT:
+            ...
+          ...
+      - pattern-not: |
+          $A, $LEN = $DECODE
+          ...
+          if <... $LEN ...> >= $LIMIT:
             ...
           ...
       - pattern-not: |
           $LEN = $DECODE
           ...
-          if not 0 <= $LEN <= $LIMIT:
+          if not 0 <= <... $LEN ...> <= $LIMIT:
+            ...
+          ...
+      # The guard is frequently on the DERIVED bound and inside a boolean op:
+      # YARAdec writes `if b_size and end > len(data)`, whose condition is an
+      # `and`, not a bare comparison. Matching only `if $LEN > $LIMIT` marked
+      # correctly-validated code as vulnerable.
+      - pattern-not: |
+          $LEN = $DECODE
+          ...
+          $END = <... $LEN ...>
+          ...
+          if <... $END ...>:
+            ...
+          ...
+      - pattern-not: |
+          $A, $LEN = $DECODE
+          ...
+          $END = <... $LEN ...>
+          ...
+          if <... $END ...>:
             ...
           ...

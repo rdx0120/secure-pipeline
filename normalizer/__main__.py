@@ -27,12 +27,17 @@ def main(argv=None) -> int:
     ap.add_argument("--include-snippets", action="store_true",
                     help="opt in to snippets for non-secret-bearing tools only")
     ap.add_argument("--policy", type=Path, default=Path("policy.yaml"))
-    ap.add_argument("--exceptions", type=Path, default=Path("exceptions.yaml"))
+    # Exceptions are FEDERATED: they live in the repo being scanned, reviewed
+    # by whoever owns that code. policy.yaml is centrally governed here.
+    ap.add_argument("--exceptions", type=Path, default=None,
+                    help="default: <root>/.security/exceptions.yaml")
     ap.add_argument("--no-gate", action="store_true",
                     help="emit attestation and findings without gating")
     args = ap.parse_args(argv)
 
-    runs = scan(args.root.resolve(), args.out, args.semgrep_config)
+    root = args.root.resolve()
+    exceptions_path = args.exceptions or (root / ".security" / "exceptions.yaml")
+    runs = scan(root, args.out, args.semgrep_config)
     results = {
         tool: ADAPTERS[tool].parse(run, include_snippets=args.include_snippets)
         for tool, run in runs.items()
@@ -56,7 +61,7 @@ def main(argv=None) -> int:
     return gate.main(
         json.loads((args.out / "findings.json").read_text()),
         json.loads((args.out / "attestation.json").read_text()),
-        args.policy, args.exceptions, args.out / "gate.json",
+        args.policy, exceptions_path, args.out / "gate.json", root=root,
     )
 
 
