@@ -1,0 +1,69 @@
+{
+  "format_version": "1.2",
+  "resource_changes": [
+    {
+      "address": "aws_s3_bucket.artifacts",
+      "type": "aws_s3_bucket",
+      "name": "artifacts",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "after": {
+          "bucket": "secure-pipeline-artifacts-111122223333"
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_public_access_block.artifacts",
+      "type": "aws_s3_bucket_public_access_block",
+      "name": "artifacts",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "after": {
+          "block_public_acls": true,
+          "block_public_policy": true,
+          "ignore_public_acls": true,
+          "restrict_public_buckets": true
+        }
+      }
+    },
+    {
+      "address": "aws_s3_bucket_server_side_encryption_configuration.artifacts",
+      "type": "aws_s3_bucket_server_side_encryption_configuration",
+      "name": "artifacts",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "after": {
+          "rule": [
+            {
+              "apply_server_side_encryption_by_default": [
+                {
+                  "sse_algorithm": "aws:kms"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "address": "aws_iam_role.ci",
+      "type": "aws_iam_role",
+      "name": "ci",
+      "change": {
+        "actions": [
+          "create"
+        ],
+        "after": {
+          "name": "secure-pipeline-ci",
+          "assume_role_policy": "{\"Version\": \"2012-10-17\", \"Statement\": [{\"Effect\": \"Allow\", \"Action\": [\"sts:AssumeRoleWithWebIdentity\"], \"Principal\": {\"Federated\": \"arn:aws:iam::111122223333:oidc-provider/token.actions.githubusercontent.com\"}, \"Condition\": {\"StringEquals\": {\"token.actions.githubusercontent.com:aud\": [\"sts.amazonaws.com\"]}}}]}"
+        }
+      }
+    }
+  ]
+}
