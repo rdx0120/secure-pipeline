@@ -41,7 +41,7 @@ data "aws_caller_identity" "current" {}
 # ---------------------------------------------------------------- bucket ----
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = "secure-pipeline-artifacts-${data.aws_caller_identity.current.account_id}"
+  bucket_prefix = "secure-pipeline-artifacts-"
 }
 
 resource "aws_s3_bucket_public_access_block" "artifacts" {
@@ -69,6 +69,29 @@ resource "aws_s3_bucket_versioning" "artifacts" {
 }
 
 # ------------------------------------------------------------------ OIDC ----
+
+resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+
+  rule {
+    id     = "expire-artifacts"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
 
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
