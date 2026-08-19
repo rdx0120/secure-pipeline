@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # NOT the default. actions/checkout defaults to fetch-depth: 1, which
+          # silently reduces secret scanning to the tip commit -- see LESSONS.md
+          # #4. This repository's own attestation reports FAIL_UNVERIFIABLE on a
+          # shallow checkout, so this job would fail without it.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pyyaml semgrep
+
+      - name: Unit tests
+        run: python -m pytest tests/ -q
+
+      - name: Semgrep rule tests
+        # The rules are tested against their own annotated fixtures. LESSONS.md
+        # #5 is the reminder that this passing is necessary, not sufficient.
+        run: semgrep --test --config rules/ rules/tests/ --metrics=off
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install conftest
+        run: |
+          go install github.com/open-policy-agent/conftest@latest
+          echo "$HOME/go/bin" >> "$GITHUB_PATH"
+      - name: Terraform policy fixtures
+        run: |
+          conftest test --policy infra/policy/ infra/tests/plan-compliant.json
+          # These two MUST fail; the gate is worthless if they pass.
+          ! conftest test --policy infra/policy/ infra/tests/plan-violating.json
+          ! conftest test --policy infra/policy/ infra/tests/plan-no-sub.json
