@@ -1,0 +1,35 @@
+rules:
+  - id: subprocess-shell-injection
+    languages: [python]
+    severity: ERROR
+    message: >-
+      subprocess invoked with shell=True or with a command assembled by string
+      formatting. This orchestrator shells out to six external scanners with
+      paths and config values that originate outside the program, so a filename
+      containing a shell metacharacter becomes command execution. Pass a list
+      of arguments and leave shell=False (the default).
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command"
+      confidence: HIGH
+      references:
+        - https://docs.python.org/3/library/subprocess.html#security-considerations
+    patterns:
+      - pattern-either:
+          # shell=True is dangerous regardless of how the command was built
+          - patterns:
+              - pattern-either:
+                  - pattern: subprocess.run(..., shell=True, ...)
+                  - pattern: subprocess.call(..., shell=True, ...)
+                  - pattern: subprocess.check_output(..., shell=True, ...)
+                  - pattern: subprocess.Popen(..., shell=True, ...)
+                  - pattern: os.system(...)
+                  - pattern: os.popen(...)
+          # a dynamically-built command string, even without shell=True, is a
+          # sign the argument vector is being assembled by concatenation
+          - patterns:
+              - pattern-either:
+                  - pattern: subprocess.$M(f"...", ...)
+                  - pattern: subprocess.$M("..." % ..., ...)
+                  - pattern: subprocess.$M("...".format(...), ...)
+                  - pattern: subprocess.$M($A + $B, ...)

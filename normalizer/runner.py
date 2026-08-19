@@ -12,6 +12,7 @@ Two rules this module exists to enforce:
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
@@ -43,6 +44,34 @@ class Probes:
 
 def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
+
+
+SEMGREPIGNORE_TEMPLATE = Path(__file__).parent.parent / "rules" / "semgrepignore.template"
+
+
+@contextlib.contextmanager
+def declared_scope(root: Path):
+    """Install our scope declaration over semgrep's shipped default.
+
+    Semgrep applies a built-in .semgrepignore template -- which excludes tests/
+    -- whenever the project has none of its own. There is no supported flag to
+    disable it (`--x-semgrepignore-filename` is INTERNAL and does not suppress
+    the default; `--semgrepignore-v2` does not either). Writing a real file is
+    the only stable override, so we install one and restore whatever was there.
+
+    A project that ships its OWN .semgrepignore has made a deliberate decision,
+    and we leave it alone.
+    """
+    target = root / ".semgrepignore"
+    if target.exists():
+        yield          # the project declared its own scope; respect it
+        return
+    try:
+        target.write_text(SEMGREPIGNORE_TEMPLATE.read_text())
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            target.unlink()
 
 
 def probe(root: Path, trivy_pkg_json: Path | None = None) -> Probes:
@@ -129,9 +158,18 @@ def scan(root: Path, out: Path, semgrep_config: str) -> dict[str, ScanRun]:
     #    admit the skip list is unavailable.
     if tool("semgrep"):
         sarif, sjson = out / "semgrep.sarif", out / "semgrep.json"
-        base = ["semgrep", "--config", semgrep_config, "--metrics=off", "--verbose"]
-        r = _run(base + ["--sarif", "-o", str(sarif), "."], root)
-        _run(base + ["--json", "-o", str(sjson), "."], root)
+        # Resolve a local ruleset against the CALLER's cwd before handing it to
+        # semgrep, which runs with cwd=root. A relative --config silently
+        # resolved against the scanned repo, semgrep errored, and the leg
+        # examined 0 files -- caught by the attestation rather than shipped as
+        # a clean scan.
+        cfg = semgrep_config
+        if not cfg.startswith(("p/", "r/")) and Path(cfg).exists():
+            cfg = str(Path(cfg).resolve())
+        base = ["semgrep", "--config", cfg, "--metrics=off", "--verbose"]
+        with declared_scope(root):
+            r = _run(base + ["--sarif", "-o", str(sarif), "."], root)
+            _run(base + ["--json", "-o", str(sjson), "."], root)
         if sarif.exists() and sarif.stat().st_size:
             docs = {"findings": json.loads(sarif.read_text())}
             if sjson.exists() and sjson.stat().st_size:

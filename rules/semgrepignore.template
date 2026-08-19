@@ -1,0 +1,18 @@
+# Scope declaration installed by the orchestrator for the duration of a scan.
+#
+# Semgrep's SHIPPED DEFAULT excludes tests/ (and other paths) whenever a project
+# has no .semgrepignore of its own. That exclusion is not a decision anyone
+# made, and undeclared scope reduction is precisely the failure this pipeline
+# exists to catch -- so we replace the default rather than inherit it.
+#
+# WE SCAN TESTS. Test trees in this portfolio hold credential fixtures and
+# binary parser inputs; they are security-relevant, not boilerplate.
+#
+# Noise is suppressed BY RULE ID, never by path. Exclude the behaviour, not the
+# software: a rule suppressed by id stays suppressed for a stated reason, while
+# a suppressed directory silently hides everything that ever lands in it.
+.git/
+node_modules/
+.venv/
+venv/
+*.min.js

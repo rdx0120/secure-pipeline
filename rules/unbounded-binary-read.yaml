@@ -1,0 +1,92 @@
+rules:
+  - id: unbounded-binary-read
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A length or offset field decoded from a binary stream is used as an
+      allocation size, read length, seek target, or slice bound with no check
+      against the bytes actually available. In a parser for attacker-controlled
+      input (YARA arenas, scanner exports, any TLV format) a hostile length
+      field becomes an enormous allocation or an out-of-bounds read. Compare the
+      value against the remaining buffer before using it, or clamp it with
+      min().
+    metadata:
+      category: security
+      cwe: "CWE-1284: Improper Validation of Specified Quantity in Input"
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/1284.html
+      # IMPLEMENTATION NOTE -- this rule is search mode, not taint mode, and
+      # that is a deliberate consequence of testing it rather than assuming.
+      #
+      # Semgrep OSS taint does not propagate into slice-bound positions. A
+      # minimal taint rule (source `struct.unpack(...)`, sink `$BUF[:$SINK]`)
+      # matches NOTHING on `buf[:length]`, while the same sink pattern matches
+      # fine in search mode. A taint version of this rule silently missed every
+      # slice -- the most important sink it has -- while appearing to work
+      # because the allocation sinks still fired.
+      #
+      # Statement-sequence patterns also let the guard be expressed precisely:
+      # a check BETWEEN the decode and the use clears it, whereas a
+      # function-level `pattern-not-inside` would clear a use that precedes its
+      # own check.
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              $BUF[:$LEN]
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              $BUF[$LEN:]
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              bytearray($LEN)
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              bytes($LEN)
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              $F.read($LEN)
+          - pattern: |
+              $LEN = $DECODE
+              ...
+              $F.seek($LEN)
+      - metavariable-pattern:
+          metavariable: $DECODE
+          patterns:
+            - pattern-either:
+                - pattern: struct.unpack(...)
+                - pattern: struct.unpack(...)[...]
+                - pattern: struct.unpack_from(...)
+                - pattern: struct.unpack_from(...)[...]
+                - pattern: int.from_bytes(...)
+      # A bounds check between the decode and the use clears the finding.
+      - pattern-not: |
+          $LEN = $DECODE
+          ...
+          if $LEN > $LIMIT:
+            ...
+          ...
+      - pattern-not: |
+          $LEN = $DECODE
+          ...
+          if $LEN >= $LIMIT:
+            ...
+          ...
+      - pattern-not: |
+          $LEN = $DECODE
+          ...
+          if $LEN < $LIMIT:
+            ...
+          ...
+      - pattern-not: |
+          $LEN = $DECODE
+          ...
+          if not 0 <= $LEN <= $LIMIT:
+            ...
+          ...

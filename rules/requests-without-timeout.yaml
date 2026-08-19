@@ -1,0 +1,47 @@
+rules:
+  - id: requests-without-timeout
+    languages: [python]
+    severity: WARNING
+    message: >-
+      HTTP call with no timeout. Python's requests library blocks FOREVER by
+      default -- there is no implicit timeout. In an enrichment pipeline a hung
+      KEV/EPSS call does not fail the run, it stalls it silently, and a
+      remediation queue that never finishes looks identical to one with nothing
+      to do. Pass timeout=(connect, read).
+    metadata:
+      category: reliability
+      cwe: "CWE-1088: Synchronous Access of Remote Resource without Timeout"
+      confidence: HIGH
+      references:
+        - https://requests.readthedocs.io/en/latest/user/quickstart/#timeouts
+    patterns:
+      - pattern-either:
+          - pattern: requests.get(...)
+          - pattern: requests.post(...)
+          - pattern: requests.put(...)
+          - pattern: requests.patch(...)
+          - pattern: requests.delete(...)
+          - pattern: requests.head(...)
+          - pattern: requests.request(...)
+          # A bare `$SESSION.get(...)` matches EVERY dict.get() in the
+          # codebase. Running this rule against its own repo produced 109
+          # findings, ~100 of them dict lookups in the adapters. The receiver
+          # has to be constrained to something session-shaped.
+          - patterns:
+              - pattern-either:
+                  - pattern: $SESSION.get($URL, ...)
+                  - pattern: $SESSION.post($URL, ...)
+                  - pattern: $SESSION.put($URL, ...)
+                  - pattern: $SESSION.delete($URL, ...)
+                  - pattern: $SESSION.request($METHOD, $URL, ...)
+              - metavariable-regex:
+                  metavariable: $SESSION
+                  regex: (?i)^(s|sess|session|client|http|_?self\.(session|client|_session|_client))$
+          - pattern: urllib.request.urlopen(...)
+      - pattern-not: requests.$M(..., timeout=$T, ...)
+      - pattern-not: $SESSION.$M(..., timeout=$T, ...)
+      - pattern-not: urllib.request.urlopen(..., timeout=$T, ...)
+      # A session with a timeout adapter mounted is the documented escape hatch.
+      - pattern-not-inside: |
+          $SESSION.request = functools.partial(..., timeout=$T)
+          ...

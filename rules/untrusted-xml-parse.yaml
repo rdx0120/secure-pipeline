@@ -1,0 +1,50 @@
+rules:
+  - id: untrusted-xml-parse
+    languages: [python]
+    severity: ERROR
+    message: >-
+      xml.etree parses a path that came from outside the program (CLI argument,
+      function parameter, environment, or file listing). Python's stdlib XML
+      parsers are vulnerable to entity-expansion and external-entity attacks on
+      untrusted input. Use defusedxml.ElementTree, or call
+      defusedxml.defuse_stdlib() before parsing.
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      confidence: HIGH
+      # bandit's B314 flags EVERY xml.etree.parse call, including parses of
+      # constants and of files the program itself just wrote. This rule taints
+      # from untrusted sources instead, so a scanner-export parse is reported
+      # and a fixture parse in a test helper is not.
+      references:
+        - https://docs.python.org/3/library/xml.html#xml-vulnerabilities
+    mode: taint
+    pattern-sources:
+      # A parameter of any parsing function: the caller controls it.
+      - patterns:
+          - pattern: |
+              def $FUNC(..., $PARAM, ...):
+                ...
+          - focus-metavariable: $PARAM
+      # Process-level untrusted input. Kept as separate sources because
+      # focus-metavariable cannot be applied across a pattern-either whose
+      # branches bind different metavariables.
+      - pattern: sys.argv
+      - pattern: sys.argv[...]
+      - pattern: os.environ[...]
+      - pattern: os.environ.get(...)
+    pattern-sanitizers:
+      - pattern: defusedxml.ElementTree.parse(...)
+      - pattern: str(...)
+      - pattern: int(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: xml.etree.ElementTree.parse($SINK, ...)
+              - pattern: ET.parse($SINK, ...)
+              - pattern: ElementTree.parse($SINK, ...)
+              - pattern: xml.etree.ElementTree.fromstring($SINK, ...)
+              - pattern: ET.fromstring($SINK, ...)
+              - pattern: xml.sax.parse($SINK, ...)
+              - pattern: xml.dom.minidom.parse($SINK, ...)
+          - focus-metavariable: $SINK

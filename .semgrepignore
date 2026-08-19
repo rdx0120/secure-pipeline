@@ -1,0 +1,5 @@
+# This project declares its own scope: we scan tests.
+.git/
+.venv/
+venv/
+node_modules/

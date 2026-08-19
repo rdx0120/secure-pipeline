@@ -104,6 +104,57 @@ findings present, so trusting a scanner's exit code fails open.
 | 2 | a coverage floor failed, or a leg examined less than its population |
 | 3 | a finding had unresolvable severity (upstream format drift) |
 
+## Scanning scope: we scan tests
+
+Semgrep's shipped default excludes `tests/` whenever a project has no
+`.semgrepignore` of its own. That exclusion is not a decision anyone made, and
+**undeclared scope reduction is the exact failure this pipeline exists to
+catch** — ratifying one because it was already there would be retrofitting
+intent onto an accident.
+
+So the orchestrator installs its own scope declaration for the duration of a
+scan (`rules/semgrepignore.template`), and a project that ships its own
+`.semgrepignore` is left alone, because that project made a real decision.
+
+**We scan tests because our test trees are security-relevant, not boilerplate.**
+`secure-pipeline`'s own fixtures hold synthetic credential material and SARIF
+parser inputs; under semgrep's default, the one directory holding planted
+credentials is the one directory never examined. The same default would apply
+to YARAdec's fixtures, which include attacker-controlled binary inputs and the
+parser paths that consume them.
+
+**Noise is suppressed by rule ID, never by path.** Exclude the behaviour, not
+the software. A rule suppressed by id stays suppressed for a stated reason that
+survives review; a suppressed directory silently hides everything that ever
+lands in it afterwards.
+
+Keeping tests in scope also preserves symmetry with bandit, which walks the
+filesystem. If semgrep scanned 15 files and bandit 21, every future cross-check
+between them would carry a permanent 6-file offset that someone would
+eventually read as a real signal.
+
+## Rules
+
+Rules in `rules/` are written here, not pulled from the maintained registry.
+The Semgrep Registry's maintained rulesets are license-encumbered, so the
+design is to author our own and pull only from openly-licensed rulesets. The
+registry being unreachable from the build environment is incidental — it is not
+the reason.
+
+| Rule | Grounded in |
+|---|---|
+| `untrusted-xml-parse` | `kev-epss-prioritizer`'s Nessus/OpenVAS parsers. Taint-tracked, so a parse of a scanner export is reported and a parse of a bundled constant is not — the distinction bandit's `B314` cannot make |
+| `requests-without-timeout` | The KEV/EPSS enrichment calls. A hung call does not fail a remediation pipeline, it stalls it silently |
+| `secret-reaches-sink` | The redaction boundary in `normalizer/adapters` — the tool that finds leaked credentials is itself a credential-handling program |
+| `subprocess-shell-injection` | `normalizer/runner.py`, which shells out to six scanners with externally-supplied paths |
+| `unbounded-binary-read` | YARAdec's arena parser: length fields read from a file and used as allocation or slice bounds |
+
+Test them with semgrep's own fixture format:
+
+```
+semgrep --test --config rules/ rules/tests/
+```
+
 ## Layout
 
 ```
@@ -118,6 +169,10 @@ normalizer/
 tests/
   fixtures/            real baseline output; synthetic ones labelled inline
   test_adapters.py  test_attest.py
+rules/
+  *.yaml               custom rules (no registry dependency)
+  tests/               semgrep --test fixtures, annotated ruleid:/ok:
+  semgrepignore.template   the scope declaration installed during a scan
 ```
 
 Run tests: `python3 -m pytest tests/ -q`
