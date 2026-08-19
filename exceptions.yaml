@@ -1,0 +1,34 @@
+# Every exception is a dated, attributed, expiring decision.
+#
+# This is the mechanism that makes a policy engine different from a `# noqa`
+# sprinkle: a suppression here has an owner and a deadline, and the expiry, the
+# staleness check, AND the max-age cap all fail the build. Stale entries are
+# the quiet danger -- an exception whose finding no longer exists will silently
+# re-authorize that finding the day it comes back.
+version: 1
+exceptions:
+  - id: "sha256:5681083c51ddb344a02f3e631187b7d06ebe909e7868af3f5da332ab419f4a6d"
+    reason: >-
+      Nessus .nessus exports are produced by an authenticated scanner inside the
+      trust boundary and are not attacker-supplied in the current deployment.
+      Tracked for migration to defusedxml under SEC-114.
+    approver: rohandalvi2000@gmail.com
+    expires: "2026-10-18"
+  - id: "sha256:4071c1558cdc2f702b55eb1489c49b7c666af3afa3fe17cb8ef795a0fc51d6bd"
+    reason: >-
+      Same rationale as the Nessus parser: OpenVAS XML originates from a
+      first-party scanner. Tracked under SEC-114.
+    approver: rohandalvi2000@gmail.com
+    expires: "2026-10-18"
+  - id: "sha256:131eca11c197496039241f88ab79537fa25140a309290852cb6e38e8f4bf8524"
+    reason: >-
+      bandit B314 corroborating the semgrep finding above on the same line.
+      Suppressed together so the pair does not half-block. SEC-114.
+    approver: rohandalvi2000@gmail.com
+    expires: "2026-10-18"
+  - id: "sha256:3e9c0a65de8f18d698cbc4c4760fccb8029f6f74899ae8c3f1c5e45ef2bc66bc"
+    reason: >-
+      bandit B314 corroborating the semgrep finding above on the same line.
+      SEC-114.
+    approver: rohandalvi2000@gmail.com
+    expires: "2026-10-18"

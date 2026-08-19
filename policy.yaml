@@ -1,0 +1,77 @@
+# Gate policy. Declarative by design: gate.py contains no thresholds, no rule
+# names, and no severity arithmetic. Everything that decides an outcome lives
+# here, so a policy change is a reviewable diff rather than a code change.
+version: 1
+
+coverage:
+  # The attestation IS the gate, not a side channel beside it. A run with zero
+  # findings and a failed attestation is a failure -- that asymmetry is the
+  # whole thesis, and this is where it is wired in.
+  fail_on_unverifiable: true      # "we cannot prove what was examined"
+  fail_on_no_coverage: true       # "the leg examined nothing"
+  fail_on_below_floor: true       # "the leg examined less than its floor"
+  fail_on_partial: true           # examined < denominator (semgrep skipping tests/)
+  # A leg that did not run at all is not a pass.
+  require_legs: [bandit, gitleaks, semgrep, trivy-fs]
+
+severity_floor:
+  # Findings below a leg's floor are dropped before actions are applied.
+  # gitleaks assigns `high` by policy to everything it emits, so its floor is
+  # high; anything lower from that tool would be a bug, not a finding.
+  bandit: medium
+  semgrep: low
+  gitleaks: high
+  trivy-fs: medium
+
+actions:
+  # `unknown` blocks. An unresolvable severity means the normalizer met a
+  # format it does not understand -- break loudly rather than guess.
+  unknown: block
+  critical: block
+  high: block
+  medium: warn
+  low: warn
+  info: ignore
+
+corroboration:
+  # Cross-tool agreement raises confidence, not severity. Inflating severity
+  # would corrupt the tools' own judgment; routing preserves it.
+  min_tools: 2
+  # A corroborated finding blocks even when its nominal severity would only
+  # warn. Two independent tools at the same line is rarely a false positive.
+  escalate_warn_to_block: true
+  # When one tool fires and another that PROVABLY examined the same file stays
+  # silent, that is a coverage gap in the quiet tool, not a disagreement to
+  # average away. Reported; does not block on its own.
+  report_disagreement: true
+
+exceptions:
+  # Governance for exceptions.yaml itself.
+  require_fields: [id, reason, approver, expires]
+  max_age_days: 90          # an exception may not be granted for longer
+  fail_on_expired: true     # no indefinite suppressions
+  fail_on_stale: true       # an exception matching no finding re-authorizes silently
+
+taxonomy:
+  # A coarse weakness classification WE own, used only to group corroborating
+  # findings. Deliberately not CWE: the tools disagree on CWE assignment, and
+  # mapping through it would assert equivalences none of them make.
+  # Values are regexes matched against the full rule_id.
+  xml_parse_untrusted:
+    bandit: ["B31[3-9]", "B320"]
+    semgrep: ["untrusted-xml-parse"]
+  secret_exposure:
+    gitleaks: [".*"]
+    semgrep: ["secret-reaches-sink"]
+    bandit: ["B105", "B106", "B107"]
+  command_injection:
+    bandit: ["B60[2-9]"]
+    semgrep: ["subprocess-shell-injection"]
+  unvalidated_length:
+    semgrep: ["unbounded-binary-read"]
+  missing_timeout:
+    semgrep: ["requests-without-timeout"]
+  dependency_vulnerability:
+    trivy-fs: ["CVE-.*", "GHSA-.*"]
+  assertion_used:
+    bandit: ["B101"]

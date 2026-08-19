@@ -41,6 +41,9 @@ class ScanRun:
     stderr: str = ""
     workspace: Path | None = None
     tool_version: str | None = None
+    #: Runner-supplied facts an adapter cannot derive from its documents,
+    #: e.g. the namespace semgrep derived from a local config path.
+    context: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_files(cls, tool: str, *, workspace: Path | None = None,

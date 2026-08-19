@@ -1,15 +1,37 @@
 # secure-pipeline
 
-A scanner orchestrator with **two** outputs, not one:
+**Premise: a check that runs cleanly and verifies nothing is the most dangerous
+state a security control can be in.** It is worse than a check that fails,
+because a failure gets investigated and a false pass gets trusted.
 
-1. **Findings** — normalized, deduplicated, policy-gated.
+Every instance below is one I hit in my own work, in a different domain, and
+none of them announced themselves — each was found by asking a scanner to prove
+what it examined rather than reading its exit code:
+
+| Where | What ran clean | What it actually verified |
+|---|---|---|
+| Wazuh rule tuning | Custom rules loaded, alerts fired | `if_group` matched a parent that never fired — the rule was dead |
+| Vulnerability triage | Scan completed, no errors | 4 hosts of 28 |
+| This pipeline, session 1 | trivy exit 0, empty SARIF | 0 packages — the pip parser cannot resolve `>=` |
+| This pipeline, session 1 | syft exit 0, valid SBOM | 0 Python components |
+| This pipeline, session 1 | scorecard **exit 0** | nothing; it wrote a 0-byte file |
+| This pipeline, session 3 | semgrep "scan completed successfully" | 15 of 21 files; it silently skipped `tests/` |
+| This pipeline, session 4 | A taint rule passing its own fixtures | Semgrep OSS taint does not reach slice bounds; the rule missed its most important sink |
+
+Four scanners in session 1 reported success while examining little or nothing.
+So this orchestrator emits **two outputs, not one**:
+
+1. **Findings** — normalized, deduplicated, corroborated, policy-gated.
 2. **A coverage attestation** — what each leg actually examined, asserted
-   against a floor.
+   against a floor and against its own population.
 
-## Why the second output exists
+A leg that examined zero units of its input type fails the build as loudly as a
+critical finding. **The gate can fail on zero findings**, and that asymmetry is
+the whole design in one exit code.
 
-The Session 1 baseline ran six scanners against a small Python repo. Four of
-them reported success while looking at little or nothing:
+## The evidence
+
+The Session 1 baseline ran six scanners against a small Python repo:
 
 | Leg | Reported | Actually examined |
 |---|---|---|
@@ -92,6 +114,48 @@ Keeping the populations distinct is what makes the real detections possible:
 semgrep cleared its floor and still ignored every file under `tests/`. A floor
 check alone passes that; a floor check plus a denominator does not.
 
+## Corroboration: group, never collapse
+
+Cross-tool agreement is the most valuable thing two scanners can tell you, so
+findings are never merged away to shorten a list. Both records survive with
+distinct `id`s and carry a shared `corroboration` block, grouped on
+`(weak_class, path, line)`.
+
+`weak_class` is a coarse taxonomy declared in `policy.yaml`. It is deliberately
+**not CWE**: the tools disagree on CWE assignment, and mapping through it would
+assert equivalences none of them make.
+
+The gate uses agreement two ways:
+
+- **Confidence, not severity.** A corroborated finding is routed differently —
+  it blocks where a lone finding of the same severity would only warn. Its
+  severity is left untouched, because inflating it would corrupt the tools' own
+  judgment.
+- **Disagreement as its own signal.** When one tool fires and another that
+  *provably examined the same file* stays silent, that is a coverage gap in the
+  quiet tool. The attestation is what makes this a real negative instead of an
+  unknown. A tool is only counted as silent if it actually has a rule in that
+  weakness class — semgrep having no equivalent of bandit's `B101` is an
+  absence of scope, not a disagreement.
+
+Presentation groups these rows; the JSON keeps both records.
+
+## Exceptions
+
+Every entry in `exceptions.yaml` requires `id`, `reason`, `approver`, and an
+ISO `expires`. Four things fail the build:
+
+| Condition | Why it fails |
+|---|---|
+| Missing required field | Not a decision anyone can audit |
+| Expired | No indefinite suppressions |
+| Beyond `max_age_days` | An exception is a deadline, not a deletion |
+| **Stale** — matches no current finding | Silently re-authorizes the finding the day it returns |
+
+The staleness check is the one that makes this different from a `# noqa`
+sprinkle. Suppressions that outlive their findings accumulate, and each one is
+a pre-approval for a bug nobody is looking at any more.
+
 ## Exit codes
 
 The orchestrator alone decides. Every scanner is forced to exit 0 — no
@@ -100,9 +164,13 @@ findings present, so trusting a scanner's exit code fails open.
 
 | Code | Meaning |
 |---|---|
-| 0 | every leg examined its population and cleared its floor |
-| 2 | a coverage floor failed, or a leg examined less than its population |
-| 3 | a finding had unresolvable severity (upstream format drift) |
+| 0 | clean |
+| 1 | findings blocked, or an exception expired / went stale |
+| 2 | coverage failure — **we cannot see** |
+
+`1` and `2` are deliberately not collapsed: "we found problems" and "we can't
+see" are different pages. When both hold, coverage wins — if we could not see,
+the finding list is not trustworthy enough to reason about.
 
 ## Scanning scope: we scan tests
 
@@ -163,9 +231,12 @@ normalizer/
   runner.py            executes legs, collects INDEPENDENT coverage probes
   attest.py            coverage attestation + cross-checks
   normalize.py         merge, dedupe, sort (no policy)
+  gate.py              policy + exceptions -> one verdict
   adapters/
     base.py            Adapter protocol, ScanRun, redaction boundary
     bandit.py  gitleaks.py  semgrep.py  trivy.py
+policy.yaml            all thresholds, actions, taxonomy (no logic in Python)
+exceptions.yaml        dated, attributed, expiring suppressions
 tests/
   fixtures/            real baseline output; synthetic ones labelled inline
   test_adapters.py  test_attest.py

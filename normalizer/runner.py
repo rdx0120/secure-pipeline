@@ -114,6 +114,23 @@ def probe(root: Path, trivy_pkg_json: Path | None = None) -> Probes:
     )
 
 
+def examined_paths(runs: dict[str, ScanRun]) -> dict[str, set[str]]:
+    """Which files each leg provably opened.
+
+    Disagreement is only meaningful against this: a tool that stayed silent on
+    a file it never opened tells you nothing.
+    """
+    out: dict[str, set[str]] = {}
+    b = runs.get("bandit")
+    if b:
+        m = (b.documents["findings"].get("metrics") or {})
+        out["bandit"] = {k.lstrip("./") for k in m if k != "_totals"}
+    sg = runs.get("semgrep")
+    if sg and "metrics" in sg.documents:
+        out["semgrep"] = set((sg.documents["metrics"].get("paths") or {}).get("scanned") or [])
+    return out
+
+
 def scan(root: Path, out: Path, semgrep_config: str) -> dict[str, ScanRun]:
     """Run all four legs. Never raises on scanner failure; records it."""
     out.mkdir(parents=True, exist_ok=True)
@@ -164,8 +181,12 @@ def scan(root: Path, out: Path, semgrep_config: str) -> dict[str, ScanRun]:
         # examined 0 files -- caught by the attestation rather than shipped as
         # a clean scan.
         cfg = semgrep_config
+        namespace = None
         if not cfg.startswith(("p/", "r/")) and Path(cfg).exists():
-            cfg = str(Path(cfg).resolve())
+            resolved = Path(cfg).resolve()
+            cfg = str(resolved)
+            # Mirrors how semgrep derives a rule-id prefix from a local path.
+            namespace = ".".join(resolved.parts[1:]) if resolved.is_dir() else None
         base = ["semgrep", "--config", cfg, "--metrics=off", "--verbose"]
         with declared_scope(root):
             r = _run(base + ["--sarif", "-o", str(sarif), "."], root)
@@ -177,6 +198,7 @@ def scan(root: Path, out: Path, semgrep_config: str) -> dict[str, ScanRun]:
             runs["semgrep"] = ScanRun(
                 tool="semgrep", documents=docs, probes=probes,
                 exit_code=r.returncode, stdout=r.stdout, stderr=r.stderr, workspace=root,
+                context={"rule_namespace": namespace},
             )
 
     # -- trivy findings

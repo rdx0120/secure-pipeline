@@ -18,6 +18,24 @@ from typing import Any
 from ..model import AdapterResult, Coverage, Finding, Severity, SeveritySource
 from .base import ScanRun, build_rule_index, normalize_path, pointer, redact, result_location
 
+def strip_namespace(rule_id: str, namespace: str | None) -> str:
+    """Remove the namespace semgrep derives from a LOCAL config path.
+
+    With `--config rules/`, semgrep prefixes every rule id with the resolved
+    directory as dots: `root.proj.secure-pipeline.rules.untrusted-xml-parse`.
+    That makes rule_id -- and therefore the finding fingerprint, which is
+    sha256(tool|rule_id|path|snippet) -- depend on WHERE the repo is checked
+    out. The same finding would carry a different id on a CI runner than on a
+    laptop, silently invalidating every exception in exceptions.yaml.
+
+    Registry namespaces (`python.lang.security....`) are meaningful and are
+    left alone; only the locally-derived prefix is stripped.
+    """
+    if namespace and rule_id.startswith(namespace + "."):
+        return rule_id[len(namespace) + 1:]
+    return rule_id
+
+
 _LEVEL = {
     "error": Severity.HIGH,
     "warning": Severity.MEDIUM,
@@ -45,9 +63,11 @@ class SemgrepAdapter:
         version = run.tool_version or driver.get("semanticVersion")
 
         findings: list[Finding] = []
+        namespace = run.context.get("rule_namespace")
         for i, r in enumerate(sarif_run.get("results", [])):
-            rule_id = r.get("ruleId") or ""
-            rule = rules.get(rule_id)
+            raw_id = r.get("ruleId") or ""
+            rule = rules.get(raw_id)
+            rule_id = strip_namespace(raw_id, namespace)
             # The join is the whole severity story. A missing rule is a real
             # failure, not a reason to invent a default.
             if rule is None:
@@ -77,8 +97,8 @@ class SemgrepAdapter:
                     tool=self.tool,
                     tool_version=version,
                     rule_id=rule_id,
-                    rule_name=(rule or {}).get("name")
-                    or ((rule or {}).get("shortDescription") or {}).get("text"),
+                    rule_name=strip_namespace((rule or {}).get("name") or "", namespace)
+                    or None,
                     message=r.get("message", {}).get("text", ""),
                     severity=severity,
                     severity_source=source,

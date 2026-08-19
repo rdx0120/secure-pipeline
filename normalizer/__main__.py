@@ -8,12 +8,15 @@ Exit codes are the orchestrator's, never a scanner's:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from . import attest, normalize
+import yaml
+
+from . import attest, gate, normalize
 from .adapters import ADAPTERS
-from .runner import scan
+from .runner import examined_paths, scan
 
 
 def main(argv=None) -> int:
@@ -23,6 +26,10 @@ def main(argv=None) -> int:
     ap.add_argument("--semgrep-config", default="p/python")
     ap.add_argument("--include-snippets", action="store_true",
                     help="opt in to snippets for non-secret-bearing tools only")
+    ap.add_argument("--policy", type=Path, default=Path("policy.yaml"))
+    ap.add_argument("--exceptions", type=Path, default=Path("exceptions.yaml"))
+    ap.add_argument("--no-gate", action="store_true",
+                    help="emit attestation and findings without gating")
     args = ap.parse_args(argv)
 
     runs = scan(args.root.resolve(), args.out, args.semgrep_config)
@@ -32,10 +39,25 @@ def main(argv=None) -> int:
         if tool in ADAPTERS
     }
 
-    code_a = attest.main(results, args.out / "attestation.json")
+    args.out.mkdir(parents=True, exist_ok=True)
+    taxonomy = (yaml.safe_load(args.policy.read_text()) or {}).get("taxonomy", {}) \
+        if args.policy.exists() else {}
+
+    attest.main(results, args.out / "attestation.json")
     print()
-    code_n = normalize.main(results, args.out / "findings.json")
-    return code_a or code_n
+    normalize.main(
+        results, args.out / "findings.json",
+        taxonomy=taxonomy, examined=examined_paths(runs),
+    )
+    if args.no_gate:
+        return 0
+
+    print()
+    return gate.main(
+        json.loads((args.out / "findings.json").read_text()),
+        json.loads((args.out / "attestation.json").read_text()),
+        args.policy, args.exceptions, args.out / "gate.json",
+    )
 
 
 if __name__ == "__main__":
