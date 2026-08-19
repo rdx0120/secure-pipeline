@@ -1,4 +1,5 @@
 {
+ "_fixture_note": "Real semgrep JSON coverage block (paths.scanned) from the same run.",
  "version": "1.173.0",
  "paths": {
   "scanned": [

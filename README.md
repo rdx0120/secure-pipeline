@@ -70,17 +70,58 @@ finding:
 `tool.driver.rules` is indexed for lookups only, never counted: gitleaks emits
 all 222 of its rules regardless of which fired.
 
+## Populations, not a shared denominator
+
+`unit` is deliberately tool-specific. bandit walks the filesystem; semgrep
+scans git-tracked paths minus `.semgrepignore`. Reporting both as "files"
+implies a comparison that does not hold — someone will eventually diff 21
+against 15 and conclude a scanner is broken.
+
+Each coverage record carries `{examined, denominator, denominator_source}`, and
+`examined` and `denominator` are always **two independent measurements**. A row
+where both come from the same probe proves nothing.
+
+Keeping the populations distinct is what makes the real detections possible:
+
+```
+[FAIL] semgrep: examined its full python_files_git_tracked population
+       examined 15 of 21 (71%); 6 never looked at.
+       12 paths skipped: semgrepignore_patterns_match=12
+```
+
+semgrep cleared its floor and still ignored every file under `tests/`. A floor
+check alone passes that; a floor check plus a denominator does not.
+
+## Exit codes
+
+The orchestrator alone decides. Every scanner is forced to exit 0 — no
+`--error`, no `--exit-code 1` — because semgrep and trivy both return 0 with
+findings present, so trusting a scanner's exit code fails open.
+
+| Code | Meaning |
+|---|---|
+| 0 | every leg examined its population and cleared its floor |
+| 2 | a coverage floor failed, or a leg examined less than its population |
+| 3 | a finding had unresolvable severity (upstream format drift) |
+
 ## Layout
 
 ```
 normalizer/
   model.py             Finding, Coverage, Severity, SeveritySource
+  runner.py            executes legs, collects INDEPENDENT coverage probes
+  attest.py            coverage attestation + cross-checks
+  normalize.py         merge, dedupe, sort (no policy)
   adapters/
     base.py            Adapter protocol, ScanRun, redaction boundary
     bandit.py  gitleaks.py  semgrep.py  trivy.py
 tests/
-  fixtures/            real Session 1 baseline output (secrets synthesized)
-  test_adapters.py
+  fixtures/            real baseline output; synthetic ones labelled inline
+  test_adapters.py  test_attest.py
 ```
 
-Run: `python3 -m pytest tests/ -q`
+Run tests: `python3 -m pytest tests/ -q`
+
+Run end-to-end: `python3 -m normalizer /path/to/repo --out out/`
+
+See [AI-USE.md](AI-USE.md) for disclosure of AI assistance.

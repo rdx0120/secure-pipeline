@@ -1,4 +1,5 @@
 {
+ "_fixture_note": "SYNTHETIC FIXTURE. Captured from a throwaway probe repo, NOT from any real project. Every secret in region.snippet.text has been replaced with an obviously fake placeholder; no value here was ever a live credential.",
  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
  "version": "2.1.0",
  "runs": [

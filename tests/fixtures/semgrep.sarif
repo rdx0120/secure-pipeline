@@ -1,4 +1,5 @@
 {
+ "_fixture_note": "Real semgrep 1.173.0 SARIF, truncated to 6 results. Rules are throwaway probes ('any import') used only to characterise SARIF shape -- the semgrep registry was unreachable. Findings are meaningless; the STRUCTURE is the point.",
  "version": "2.1.0",
  "runs": [
   {

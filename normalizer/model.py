@@ -117,6 +117,19 @@ class Finding:
 
 @dataclass(frozen=True)
 class Coverage:
+    """What one leg examined, and out of what population.
+
+    `unit` is deliberately tool-specific -- `python_files_on_disk` is NOT
+    `python_files_git_tracked`. bandit walks the filesystem and saw 21 files;
+    semgrep scans git-tracked paths and saw 15. Reporting both as "files"
+    implies a comparison that does not hold, and invites the reader to diff two
+    different populations and conclude a scanner is broken.
+
+    Keeping the populations distinct is also what makes the stronger check
+    possible later: if the git-tracked population drops well below the on-disk
+    one, something got .gitignore'd out of scanning.
+    """
+
     tool: str
     unit: str
     examined: int
@@ -126,11 +139,16 @@ class Coverage:
     #: a scanner that found nothing and a scanner that looked at nothing produce
     #: identical finding arrays.
     evidence: str
+    #: Size of the population this tool SHOULD have examined, in its own unit.
+    #: None when the runner supplied no inventory probe.
+    denominator: int | None = None
+    denominator_source: str | None = None
     detail: str | None = None
 
     @classmethod
     def assess(
         cls, tool: str, unit: str, examined: int | None, floor: int, evidence: str,
+        denominator: int | None = None, denominator_source: str | None = None,
         detail: str | None = None,
     ) -> "Coverage":
         if examined is None:
@@ -142,11 +160,19 @@ class Coverage:
             status = CoverageStatus.FAIL_BELOW_FLOOR
         else:
             status = CoverageStatus.OK
-        return cls(tool, unit, examined, floor, status, evidence, detail)
+        return cls(tool, unit, examined, floor, status, evidence,
+                   denominator, denominator_source, detail)
 
     @property
     def ok(self) -> bool:
         return self.status is CoverageStatus.OK
+
+    @property
+    def ratio(self) -> float | None:
+        """Fraction of its own population the tool examined."""
+        if self.denominator in (None, 0) or self.examined < 0:
+            return None
+        return self.examined / self.denominator
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

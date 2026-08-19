@@ -28,7 +28,9 @@ _LEVEL = {
 
 class SemgrepAdapter:
     tool = "semgrep"
-    unit = "python_files"
+    #: semgrep scans git-tracked paths only, minus .semgrepignore. A DIFFERENT
+    #: population from bandit's on-disk walk -- never compare the two counts.
+    unit = "python_files_git_tracked"
     floor = 1
     #: semgrep snippets are source code, not credentials -- but a rule that
     #: matches a hardcoded secret would still capture one, so snippets remain
@@ -100,13 +102,20 @@ class SemgrepAdapter:
             # "12 files skipped" line from the baseline exists ONLY in the human
             # summary, so we must not report a skip count we do not have.
             skipped = paths.get("skipped")
-            detail = (
-                f"{len(skipped)} paths skipped by .semgrepignore / untracked"
-                if skipped is not None
-                else "skip list unavailable (semgrep omits paths.skipped without --verbose)"
-            )
+            if skipped is None:
+                detail = ("skip list unavailable "
+                          "(semgrep omits paths.skipped without --verbose)")
+            else:
+                reasons: dict[str, int] = {}
+                for sk in skipped:
+                    reasons[sk.get("reason", "unknown")] = (
+                        reasons.get(sk.get("reason", "unknown"), 0) + 1
+                    )
+                detail = f"{len(skipped)} paths skipped: " + ", ".join(
+                    f"{k}={v}" for k, v in sorted(reasons.items())
+                )
         else:
-            examined = run.probes.get("python_files")
+            examined = run.probes.get("python_files_git_tracked")
             evidence = (
                 "runner probe: git ls-files '*.py'"
                 if examined is not None
@@ -116,6 +125,9 @@ class SemgrepAdapter:
 
         coverage = Coverage.assess(
             tool=self.tool, unit=self.unit, examined=examined, floor=self.floor,
-            evidence=evidence, detail=detail,
+            evidence=evidence,
+            denominator=run.probes.get("python_files_git_tracked"),
+            denominator_source="runner probe: git ls-files '*.py'",
+            detail=detail,
         )
         return AdapterResult(findings=findings, coverage=coverage)

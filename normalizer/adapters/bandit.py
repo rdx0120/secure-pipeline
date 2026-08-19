@@ -43,7 +43,8 @@ def _severity(issue_severity: str | None, issue_confidence: str | None) -> Sever
 
 class BanditAdapter:
     tool = "bandit"
-    unit = "python_files"
+    #: bandit walks the filesystem: it sees untracked and gitignored files too.
+    unit = "python_files_on_disk"
     floor = 1
     secret_bearing = False
 
@@ -95,6 +96,8 @@ class BanditAdapter:
             examined=examined if metrics else None,
             floor=self.floor,
             evidence="bandit.json#/metrics (per-file keys)",
+            denominator=run.probes.get("python_files_on_disk"),
+            denominator_source="runner probe: find . -name '*.py'",
             detail=f"{loc} LOC scanned" if loc is not None else None,
         )
         return AdapterResult(findings=findings, coverage=coverage)

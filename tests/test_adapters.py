@@ -245,3 +245,40 @@ def test_every_finding_declares_its_severity_source():
             assert isinstance(f.severity_source, SeveritySource)
             assert f.to_dict()["severity_source"] != SeveritySource.UNRESOLVED.value
             assert f.snippet_sha256.startswith("sha256:")
+
+
+# ------------------------------------------------------- populations --------
+def test_units_are_not_interchangeable():
+    """21 vs 15 is two populations, not a disagreement.
+
+    If both legs reported unit "files", a reader diffing the counts would
+    conclude a scanner is broken. The unit names must make the comparison
+    obviously invalid.
+    """
+    b = BanditAdapter().parse(ScanRun(
+        tool="bandit", documents={"findings": load("bandit.json")},
+        probes={"python_files_on_disk": 21}))
+    s = SemgrepAdapter().parse(ScanRun(
+        tool="semgrep",
+        documents={"findings": load("semgrep.sarif"), "metrics": load("semgrep.json")},
+        probes={"python_files_git_tracked": 15}))
+    assert b.coverage.unit == "python_files_on_disk"
+    assert s.coverage.unit == "python_files_git_tracked"
+    assert b.coverage.unit != s.coverage.unit
+    assert b.coverage.examined == 21 and s.coverage.examined == 15
+
+
+def test_coverage_carries_denominator_and_its_source():
+    r = BanditAdapter().parse(ScanRun(
+        tool="bandit", documents={"findings": load("bandit.json")},
+        probes={"python_files_on_disk": 21}))
+    assert r.coverage.denominator == 21
+    assert "find" in r.coverage.denominator_source
+    assert r.coverage.ratio == 1.0
+
+
+def test_fixtures_are_labelled():
+    """A reader must not mistake the synthetic Django CVEs for real ones."""
+    for name in ("gitleaks.sarif", "trivy-fs-populated.sarif"):
+        assert "SYNTHETIC" in load(name)["_fixture_note"]
+    assert "never depended on Django" in load("trivy-fs-populated.sarif")["_fixture_note"]

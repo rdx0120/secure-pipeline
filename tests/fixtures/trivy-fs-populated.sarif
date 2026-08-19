@@ -1,4 +1,5 @@
 {
+ "_fixture_note": "SYNTHETIC FIXTURE. Trivy output against a throwaway probe repo with deliberately old pinned packages (Django 2.2.0 etc). These CVEs describe that disposable probe, NOT kev-epss-prioritizer, which has never depended on Django.",
  "version": "2.1.0",
  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
  "runs": [

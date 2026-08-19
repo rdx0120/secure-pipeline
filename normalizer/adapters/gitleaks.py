@@ -84,18 +84,24 @@ class GitleaksAdapter:
                 )
             )
 
-        examined = run.probes.get("commits")
-        evidence = "runner probe: git rev-list --count"
-        if examined is None:
-            m = _COMMITS.search(run.stderr or "") or _COMMITS.search(run.stdout or "")
-            if m:
-                examined = int(m.group(1))
-                evidence = "gitleaks stderr log text (fallback, not a contract)"
-            else:
-                evidence = "none: gitleaks SARIF has no invocations or artifacts"
+        # `examined` must be gitleaks' OWN claim about what it did; the probe is
+        # the independent population it is measured against. Using the probe for
+        # both makes the row tautological -- 6 of 6 proves nothing.
+        m = _COMMITS.search(run.stderr or "") or _COMMITS.search(run.stdout or "")
+        if m:
+            examined = int(m.group(1))
+            evidence = "gitleaks stderr log text (its only coverage signal)"
+        elif run.probes.get("commits") is not None:
+            examined = run.probes["commits"]
+            evidence = "runner probe (fallback): git rev-list --count"
+        else:
+            examined = None
+            evidence = "none: gitleaks SARIF has no invocations or artifacts"
 
         coverage = Coverage.assess(
             tool=self.tool, unit=self.unit, examined=examined, floor=self.floor,
             evidence=evidence,
+            denominator=run.probes.get("commits"),
+            denominator_source="runner probe: git rev-list --count HEAD",
         )
         return AdapterResult(findings=findings, coverage=coverage)

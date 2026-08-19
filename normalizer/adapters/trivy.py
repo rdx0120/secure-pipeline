@@ -37,7 +37,9 @@ def _from_cvss(score: float) -> Severity:
 
 class TrivyAdapter:
     tool = "trivy-fs"
-    unit = "packages"
+    #: Resolvable packages, which is NOT the count of declared requirements --
+    #: an unpinned range declares a dependency that resolves to nothing.
+    unit = "resolvable_packages"
     floor = 1
     secret_bearing = False
 
@@ -122,6 +124,11 @@ class TrivyAdapter:
                 if examined is not None
                 else "none: trivy SARIF reports no package inventory"
             ),
+            # Declared DIRECT deps are not the population: a lockfile resolves
+            # them plus their transitive closure. Comparing 16 resolvable
+            # against 3 declared produced a meaningless "16 of 3".
+            denominator=run.probes.get("lockfile_packages"),
+            denominator_source="runner probe: packages parsed from uv.lock",
             detail=(
                 "trivy pip parser cannot resolve unpinned ranges; an unpinned "
                 "requirements.txt yields zero packages and exit 0"
