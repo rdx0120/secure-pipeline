@@ -1,0 +1,240 @@
+{
+ "version": "2.1.0",
+ "runs": [
+  {
+   "invocations": [
+    {
+     "executionSuccessful": true,
+     "toolExecutionNotifications": []
+    }
+   ],
+   "results": [
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/__main__.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 22,
+         "endLine": 1,
+         "snippet": {
+          "text": "from .cli import main"
+         },
+         "startColumn": 1,
+         "startLine": 1
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    },
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/assets.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 35,
+         "endLine": 30,
+         "snippet": {
+          "text": "from __future__ import annotations"
+         },
+         "startColumn": 1,
+         "startLine": 30
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    },
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/assets.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 15,
+         "endLine": 32,
+         "snippet": {
+          "text": "import fnmatch"
+         },
+         "startColumn": 1,
+         "startLine": 32
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    },
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/assets.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 17,
+         "endLine": 33,
+         "snippet": {
+          "text": "import ipaddress"
+         },
+         "startColumn": 1,
+         "startLine": 33
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    },
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/assets.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 12,
+         "endLine": 34,
+         "snippet": {
+          "text": "import json"
+         },
+         "startColumn": 1,
+         "startLine": 34
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    },
+    {
+     "fingerprints": {
+      "matchBasedId/v1": "requires login"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "prioritizer/assets.py",
+         "uriBaseId": "%SRCROOT%"
+        },
+        "region": {
+         "endColumn": 25,
+         "endLine": 35,
+         "snippet": {
+          "text": "from pathlib import Path"
+         },
+         "startColumn": 1,
+         "startLine": 35
+        }
+       }
+      }
+     ],
+     "message": {
+      "text": "import statement found"
+     },
+     "properties": {},
+     "ruleId": "tmp.baseline.local-any-import"
+    }
+   ],
+   "tool": {
+    "driver": {
+     "name": "Semgrep OSS",
+     "rules": [
+      {
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "fullDescription": {
+        "text": "import statement found"
+       },
+       "help": {
+        "markdown": "import statement found",
+        "text": "import statement found"
+       },
+       "id": "tmp.baseline.local-any-import",
+       "name": "tmp.baseline.local-any-import",
+       "properties": {
+        "precision": "very-high",
+        "tags": []
+       },
+       "shortDescription": {
+        "text": "Semgrep Finding: tmp.baseline.local-any-import"
+       }
+      },
+      {
+       "defaultConfiguration": {
+        "level": "warning"
+       },
+       "fullDescription": {
+        "text": "function definition"
+       },
+       "help": {
+        "markdown": "function definition",
+        "text": "function definition"
+       },
+       "id": "tmp.baseline.local-func-def",
+       "name": "tmp.baseline.local-func-def",
+       "properties": {
+        "precision": "very-high",
+        "tags": []
+       },
+       "shortDescription": {
+        "text": "Semgrep Finding: tmp.baseline.local-func-def"
+       }
+      }
+     ],
+     "semanticVersion": "1.173.0"
+    }
+   }
+  }
+ ],
+ "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/os/schemas/sarif-schema-2.1.0.json"
+}

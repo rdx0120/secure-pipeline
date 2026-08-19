@@ -1,0 +1,316 @@
+{
+ "version": "2.1.0",
+ "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+ "runs": [
+  {
+   "tool": {
+    "driver": {
+     "fullName": "Trivy Vulnerability Scanner",
+     "informationUri": "https://github.com/aquasecurity/trivy",
+     "name": "Trivy",
+     "rules": [
+      {
+       "id": "CVE-2019-14234",
+       "name": "LanguageSpecificPackageVulnerability",
+       "shortDescription": {
+        "text": "Django: SQL injection possibility in key and index lookups for JSONField/HStoreField"
+       },
+       "fullDescription": {
+        "text": "An issue was discovered in Django 1.11.x before 1.11.23, 2.1.x before 2.1.11, and 2.2.x before 2.2.4. Due to an error in shallow key transformation, key and index lookups for django.contrib.postgres.fields.JSONField, and key lookups for django.contrib.postgres.fields.HStoreField, were subject to SQL injection. This could, for example, be exploited via crafted use of \"OR 1=1\" in a key or index name to return all records, using a suitably crafted dictionary, with dictionary expansion, as the **kwargs passed to the QuerySet.filter() function."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/nvd/cve-2019-14234",
+       "help": {
+        "text": "Vulnerability CVE-2019-14234\nSeverity: CRITICAL\nPackage: Django\nFixed Version: 1.11.23, 2.1.11, 2.2.4\nLink: [CVE-2019-14234](https://avd.aquasec.com/nvd/cve-2019-14234)\nAn issue was discovered in Django 1.11.x before 1.11.23, 2.1.x before 2.1.11, and 2.2.x before 2.2.4. Due to an error in shallow key transformation, key and index lookups for django.contrib.postgres.fields.JSONField, and key lookups for django.contrib.postgres.fields.HStoreField, were subject to SQL injection. This could, for example, be exploited via crafted use of \"OR 1=1\" in a key or index name to return all records, using a suitably crafted dictionary, with dictionary expansion, as the **kwargs passed to the QuerySet.filter() function.",
+        "markdown": "**Vulnerability CVE-2019-14234**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|CRITICAL|Django|1.11.23, 2.1.11, 2.2.4|[CVE-2019-14234](https://avd.aquasec.com/nvd/cve-2019-14234)|\n\nAn issue was discovered in Django 1.11.x before 1.11.23, 2.1.x before 2.1.11, and 2.2.x before 2.2.4. Due to an error in shallow key transformation, key and index lookups for django.contrib.postgres.fields.JSONField, and key lookups for django.contrib.postgres.fields.HStoreField, were subject to SQL injection. This could, for example, be exploited via crafted use of \"OR 1=1\" in a key or index name to return all records, using a suitably crafted dictionary, with dictionary expansion, as the **kwargs passed to the QuerySet.filter() function."
+       },
+       "properties": {
+        "cvssv3_baseScore": 9.8,
+        "cvssv3_vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssv40_baseScore": 9.3,
+        "cvssv40_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+        "precision": "very-high",
+        "security-severity": "9.8",
+        "tags": [
+         "vulnerability",
+         "security",
+         "CRITICAL"
+        ]
+       }
+      },
+      {
+       "id": "CVE-2019-19844",
+       "name": "LanguageSpecificPackageVulnerability",
+       "shortDescription": {
+        "text": "Django: crafted email address allows account takeover"
+       },
+       "fullDescription": {
+        "text": "Django before 1.11.27, 2.x before 2.2.9, and 3.x before 3.0.1 allows account takeover. A suitably crafted email address (that is equal to an existing user's email address after case transformation of Unicode characters) would allow an attacker to be sent a password reset token for the matched user account. (One mitigation in the new releases is to send password reset tokens only to the registered user email address.)"
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/nvd/cve-2019-19844",
+       "help": {
+        "text": "Vulnerability CVE-2019-19844\nSeverity: CRITICAL\nPackage: Django\nFixed Version: 1.11.27, 2.2.9, 3.0.1\nLink: [CVE-2019-19844](https://avd.aquasec.com/nvd/cve-2019-19844)\nDjango before 1.11.27, 2.x before 2.2.9, and 3.x before 3.0.1 allows account takeover. A suitably crafted email address (that is equal to an existing user's email address after case transformation of Unicode characters) would allow an attacker to be sent a password reset token for the matched user account. (One mitigation in the new releases is to send password reset tokens only to the registered user email address.)",
+        "markdown": "**Vulnerability CVE-2019-19844**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|CRITICAL|Django|1.11.27, 2.2.9, 3.0.1|[CVE-2019-19844](https://avd.aquasec.com/nvd/cve-2019-19844)|\n\nDjango before 1.11.27, 2.x before 2.2.9, and 3.x before 3.0.1 allows account takeover. A suitably crafted email address (that is equal to an existing user's email address after case transformation of Unicode characters) would allow an attacker to be sent a password reset token for the matched user account. (One mitigation in the new releases is to send password reset tokens only to the registered user email address.)"
+       },
+       "properties": {
+        "cvssv3_baseScore": 9.8,
+        "cvssv3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssv40_baseScore": 9.3,
+        "cvssv40_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+        "precision": "very-high",
+        "security-severity": "9.8",
+        "tags": [
+         "vulnerability",
+         "security",
+         "CRITICAL"
+        ]
+       }
+      },
+      {
+       "id": "CVE-2020-7471",
+       "name": "LanguageSpecificPackageVulnerability",
+       "shortDescription": {
+        "text": "django: potential SQL injection via StringAgg(delimiter)"
+       },
+       "fullDescription": {
+        "text": "Django 1.11 before 1.11.28, 2.2 before 2.2.10, and 3.0 before 3.0.3 allows SQL Injection if untrusted data is used as a StringAgg delimiter (e.g., in Django applications that offer downloads of data as a series of rows with a user-specified column delimiter). By passing a suitably crafted delimiter to a contrib.postgres.aggregates.StringAgg instance, it was possible to break escaping and inject malicious SQL."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/nvd/cve-2020-7471",
+       "help": {
+        "text": "Vulnerability CVE-2020-7471\nSeverity: CRITICAL\nPackage: Django\nFixed Version: 1.11.28, 2.2.10, 3.0.3\nLink: [CVE-2020-7471](https://avd.aquasec.com/nvd/cve-2020-7471)\nDjango 1.11 before 1.11.28, 2.2 before 2.2.10, and 3.0 before 3.0.3 allows SQL Injection if untrusted data is used as a StringAgg delimiter (e.g., in Django applications that offer downloads of data as a series of rows with a user-specified column delimiter). By passing a suitably crafted delimiter to a contrib.postgres.aggregates.StringAgg instance, it was possible to break escaping and inject malicious SQL.",
+        "markdown": "**Vulnerability CVE-2020-7471**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|CRITICAL|Django|1.11.28, 2.2.10, 3.0.3|[CVE-2020-7471](https://avd.aquasec.com/nvd/cve-2020-7471)|\n\nDjango 1.11 before 1.11.28, 2.2 before 2.2.10, and 3.0 before 3.0.3 allows SQL Injection if untrusted data is used as a StringAgg delimiter (e.g., in Django applications that offer downloads of data as a series of rows with a user-specified column delimiter). By passing a suitably crafted delimiter to a contrib.postgres.aggregates.StringAgg instance, it was possible to break escaping and inject malicious SQL."
+       },
+       "properties": {
+        "cvssv3_baseScore": 9.8,
+        "cvssv3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssv40_baseScore": 9.3,
+        "cvssv40_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+        "precision": "very-high",
+        "security-severity": "9.8",
+        "tags": [
+         "vulnerability",
+         "security",
+         "CRITICAL"
+        ]
+       }
+      },
+      {
+       "id": "CVE-2022-28346",
+       "name": "LanguageSpecificPackageVulnerability",
+       "shortDescription": {
+        "text": "Django: SQL injection in QuerySet.annotate(),aggregate() and extra()"
+       },
+       "fullDescription": {
+        "text": "An issue was discovered in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. QuerySet.annotate(), aggregate(), and extra() methods are subject to SQL injection in column aliases via a crafted dictionary (with dictionary expansion) as the passed **kwargs."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/nvd/cve-2022-28346",
+       "help": {
+        "text": "Vulnerability CVE-2022-28346\nSeverity: CRITICAL\nPackage: Django\nFixed Version: 2.2.28, 3.2.13, 4.0.4\nLink: [CVE-2022-28346](https://avd.aquasec.com/nvd/cve-2022-28346)\nAn issue was discovered in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. QuerySet.annotate(), aggregate(), and extra() methods are subject to SQL injection in column aliases via a crafted dictionary (with dictionary expansion) as the passed **kwargs.",
+        "markdown": "**Vulnerability CVE-2022-28346**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|CRITICAL|Django|2.2.28, 3.2.13, 4.0.4|[CVE-2022-28346](https://avd.aquasec.com/nvd/cve-2022-28346)|\n\nAn issue was discovered in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. QuerySet.annotate(), aggregate(), and extra() methods are subject to SQL injection in column aliases via a crafted dictionary (with dictionary expansion) as the passed **kwargs."
+       },
+       "properties": {
+        "cvssv3_baseScore": 9.8,
+        "cvssv3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssv40_baseScore": 9.3,
+        "cvssv40_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+        "precision": "very-high",
+        "security-severity": "9.8",
+        "tags": [
+         "vulnerability",
+         "security",
+         "CRITICAL"
+        ]
+       }
+      },
+      {
+       "id": "CVE-2022-28347",
+       "name": "LanguageSpecificPackageVulnerability",
+       "shortDescription": {
+        "text": "Django: SQL injection via QuerySet.explain(options) on PostgreSQL"
+       },
+       "fullDescription": {
+        "text": "A SQL injection issue was discovered in QuerySet.explain() in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. This occurs by passing a crafted dictionary (with dictionary expansion) as the **options argument, and placing the injection payload in an option name."
+       },
+       "defaultConfiguration": {
+        "level": "error"
+       },
+       "helpUri": "https://avd.aquasec.com/nvd/cve-2022-28347",
+       "help": {
+        "text": "Vulnerability CVE-2022-28347\nSeverity: CRITICAL\nPackage: Django\nFixed Version: 2.2.28, 3.2.13, 4.0.4\nLink: [CVE-2022-28347](https://avd.aquasec.com/nvd/cve-2022-28347)\nA SQL injection issue was discovered in QuerySet.explain() in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. This occurs by passing a crafted dictionary (with dictionary expansion) as the **options argument, and placing the injection payload in an option name.",
+        "markdown": "**Vulnerability CVE-2022-28347**\n| Severity | Package | Fixed Version | Link |\n| --- | --- | --- | --- |\n|CRITICAL|Django|2.2.28, 3.2.13, 4.0.4|[CVE-2022-28347](https://avd.aquasec.com/nvd/cve-2022-28347)|\n\nA SQL injection issue was discovered in QuerySet.explain() in Django 2.2 before 2.2.28, 3.2 before 3.2.13, and 4.0 before 4.0.4. This occurs by passing a crafted dictionary (with dictionary expansion) as the **options argument, and placing the injection payload in an option name."
+       },
+       "properties": {
+        "cvssv3_baseScore": 9.8,
+        "cvssv3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "cvssv40_baseScore": 9.3,
+        "cvssv40_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N",
+        "precision": "very-high",
+        "security-severity": "9.8",
+        "tags": [
+         "vulnerability",
+         "security",
+         "CRITICAL"
+        ]
+       }
+      }
+     ],
+     "version": "dev"
+    }
+   },
+   "results": [
+    {
+     "ruleId": "CVE-2019-14234",
+     "ruleIndex": 0,
+     "level": "error",
+     "message": {
+      "text": "Package: Django\nInstalled Version: 2.2.0\nVulnerability CVE-2019-14234\nSeverity: CRITICAL\nFixed Version: 1.11.23, 2.1.11, 2.2.4\nLink: [CVE-2019-14234](https://avd.aquasec.com/nvd/cve-2019-14234)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "requirements.txt",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 4,
+         "startColumn": 1,
+         "endLine": 4,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "requirements.txt: Django@2.2.0"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "CVE-2019-19844",
+     "ruleIndex": 1,
+     "level": "error",
+     "message": {
+      "text": "Package: Django\nInstalled Version: 2.2.0\nVulnerability CVE-2019-19844\nSeverity: CRITICAL\nFixed Version: 1.11.27, 2.2.9, 3.0.1\nLink: [CVE-2019-19844](https://avd.aquasec.com/nvd/cve-2019-19844)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "requirements.txt",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 4,
+         "startColumn": 1,
+         "endLine": 4,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "requirements.txt: Django@2.2.0"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "CVE-2020-7471",
+     "ruleIndex": 2,
+     "level": "error",
+     "message": {
+      "text": "Package: Django\nInstalled Version: 2.2.0\nVulnerability CVE-2020-7471\nSeverity: CRITICAL\nFixed Version: 1.11.28, 2.2.10, 3.0.3\nLink: [CVE-2020-7471](https://avd.aquasec.com/nvd/cve-2020-7471)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "requirements.txt",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 4,
+         "startColumn": 1,
+         "endLine": 4,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "requirements.txt: Django@2.2.0"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "CVE-2022-28346",
+     "ruleIndex": 3,
+     "level": "error",
+     "message": {
+      "text": "Package: Django\nInstalled Version: 2.2.0\nVulnerability CVE-2022-28346\nSeverity: CRITICAL\nFixed Version: 2.2.28, 3.2.13, 4.0.4\nLink: [CVE-2022-28346](https://avd.aquasec.com/nvd/cve-2022-28346)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "requirements.txt",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 4,
+         "startColumn": 1,
+         "endLine": 4,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "requirements.txt: Django@2.2.0"
+       }
+      }
+     ]
+    },
+    {
+     "ruleId": "CVE-2022-28347",
+     "ruleIndex": 4,
+     "level": "error",
+     "message": {
+      "text": "Package: Django\nInstalled Version: 2.2.0\nVulnerability CVE-2022-28347\nSeverity: CRITICAL\nFixed Version: 2.2.28, 3.2.13, 4.0.4\nLink: [CVE-2022-28347](https://avd.aquasec.com/nvd/cve-2022-28347)"
+     },
+     "locations": [
+      {
+       "physicalLocation": {
+        "artifactLocation": {
+         "uri": "requirements.txt",
+         "uriBaseId": "ROOTPATH"
+        },
+        "region": {
+         "startLine": 4,
+         "startColumn": 1,
+         "endLine": 4,
+         "endColumn": 1
+        }
+       },
+       "message": {
+        "text": "requirements.txt: Django@2.2.0"
+       }
+      }
+     ]
+    }
+   ],
+   "columnKind": "utf16CodeUnits",
+   "originalUriBaseIds": {
+    "ROOTPATH": {
+     "uri": "file:///tmp/probe/"
+    }
+   }
+  }
+ ]
+}
