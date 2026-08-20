@@ -1,12 +1,15 @@
 # Lessons
 
-Five instances of one failure: **a check that runs cleanly and verifies
-nothing.** All five are from building this pipeline. None announced itself.
-Each was found by asking a tool to prove what it examined rather than reading
-its exit code.
+Seven instances of one failure: **a check that runs cleanly and verifies
+nothing.** Six are from building this pipeline; the seventh is from writing
+it up. None announced itself. Each was found by asking a tool to prove what
+it examined rather than reading its exit code.
 
-They are ordered by how self-implicating they are. The last two are about my
-own code and my own rule, and they are the ones worth reading.
+They are ordered by how self-implicating they are. The last three are about my
+own rule, my own fixture, and my own tooling — and they are the ones worth
+reading. The final one was found in the tooling of the session that wrote up
+the other six, which is the best evidence available that this is a live pattern
+and not hindsight.
 
 ---
 
@@ -179,12 +182,110 @@ and only because they were run against real code instead of their own fixtures.
 
 ---
 
+## 6. A realistic fixture tripped the control the project exists to uphold
+
+**Symptom.** `git push` rejected. GitHub Push Protection flagged a Slack bot
+token in `tests/fixtures/gitleaks.sarif`.
+
+**Reality.** The fixture was synthetic — generated for this repository, never a
+live credential — but it was shaped like a real `xoxb-` token, because the whole
+point of a gitleaks fixture is to look like the thing gitleaks detects. A
+detector fixture and a detected secret are the same shape by construction.
+
+**The offered remedy was the problem.** Push Protection offers a bypass, and
+taking it would have worked immediately. It would also have written a permanent,
+documented override of a secret-scanning control into the history of a repository
+whose entire argument is that such controls must not be waved through. The audit
+trail would have read: *the author of the secret-scanning pipeline bypassed
+secret scanning.*
+
+**Fix.** The bypass was **not** taken. The unpushed history was rewritten to use
+an obviously non-token-shaped placeholder, `xoxb-` was confirmed absent across
+all history, and the branch was then pushed clean. Rewriting unpushed history is
+cheap; a bypass in the log is forever.
+
+**The generalisable rule.** A fixture for a secret-scanning tool must be
+*obviously* non-token-shaped — recognisable as a placeholder by a human and by
+the platform — because a realistic one will trip the very control the project
+exists to uphold, and the path of least resistance out of that is an override
+that contradicts the project.
+
+---
+
+## 7. A signing configuration that named a key that did not exist
+
+Found in the container tooling of the session writing up the six instances
+above. That is not a flourish: it is the point. The pattern is not something I
+found once and learned; it is something that keeps happening, including to the
+person writing the list.
+
+**Symptom.** `git config commit.gpgsign` returns `true`. `user.signingkey`
+points at a file. `git commit` exits 0. Everything reads as a working signing
+setup.
+
+**Reality.** The file that `user.signingkey` names is **0 bytes**:
+
+```
+$ git config --get user.signingkey
+/home/claude/.ssh/commit_signing_key.pub
+$ stat -c %s /home/claude/.ssh/commit_signing_key.pub
+0
+```
+
+There is no key there, no ssh-agent, and no other key on disk. The commit
+nevertheless carries a valid `gpgsig` header — because signing is actually
+performed by a separate helper named in `gpg.ssh.program`, which ignores the
+configured path entirely.
+
+**So the configured value describes nothing.** If you audited this repository's
+configuration to answer *"which key signs our commits?"*, the field whose entire
+job is to answer that question would give you a wrong answer, and every commit
+would still be signed and verified. The config is not evidence of the control;
+it is adjacent to it.
+
+**And the verification side reports the same thing for both failure modes:**
+
+```
+$ git log --format='%h %G?' -1
+ab8a393 N
+error: gpg.ssh.allowedSignersFile needs to be configured and exist
+```
+
+`%G?` returns `N` — the same value it returns for a genuinely unsigned commit —
+even though this commit *is* signed and shows as Verified on GitHub. Locally,
+"this commit has no signature" and "I am not configured to check signatures" are
+indistinguishable. A gate scripted on `%G?` would draw a confident conclusion
+from a check that never ran.
+
+**The generalisable rule.** A signing setup that reports success proves that
+*something* signed, not that the thing you configured did. Verify the artifact
+(`git cat-file commit HEAD | grep gpgsig`, or the platform's Verified badge), not
+the configuration — and never read a verification command's output without first
+establishing that the verification could run at all.
+
+**Postscript — how this instance was nearly recorded wrong.** The first version
+of this entry claimed that commits were silently coming out *unsigned*. That
+claim was written into the project's handoff brief from an unverified report and
+restated as established fact — in a document whose subject is not restating
+unverified things as fact. It survived until someone ran
+`git cat-file commit HEAD | grep gpgsig`, found a valid signature, and traced the
+real cause to `gpg.ssh.program` and an unset `allowedSignersFile`.
+
+The other six instances were found in tooling. This one was found in the
+write-up *of* those six, on the second pass, by the same discipline the
+write-up describes — and the near-miss is the more useful half of it. **The
+correction is the instance.** A pattern you can only recognise in hindsight is a
+story; one that catches you while you are actively documenting it is a pattern.
+
+---
+
 ## The through-line
 
 Every instance has the same shape: a mechanism that was present, ran without
-error, and verified less than it appeared to. In four of the five, the reported
-output was indistinguishable from success. In the fifth, the reported output was
-a passing test suite.
+error, and verified less than it appeared to. In most of them the reported output
+was indistinguishable from success. In one, the reported output was a passing
+test suite. In the last, the reported output was a configuration file that named
+something which did not exist.
 
 The generalisation is not "scanners are unreliable." It is that **absence of
 findings carries no information unless you separately establish what was

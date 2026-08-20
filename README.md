@@ -60,7 +60,7 @@ asymmetry is the whole design in one exit code — because a scanner that
 examined nothing emits exactly the same empty findings array as a clean
 codebase.
 
-## Five instances of the same failure
+## Eight instances of the same failure
 
 Every one below is from my own work, in a different domain, and none announced
 itself. Each was found by asking a tool to prove what it examined rather than
@@ -74,9 +74,14 @@ reading its exit code. Full write-ups in [LESSONS.md](LESSONS.md).
 | semgrep | "scan completed successfully" | 15 of 21 files; it silently skipped `tests/` |
 | gitleaks on CI defaults | 1 commit scanned, coverage "1 of 1" | one commit of an unknown-length history |
 | My own custom rule | Passed 5/5 of its own fixtures | Structurally blind to the code it was written for |
+| Push Protection | Bypass offered, push would have succeeded | A secret-shaped fixture in a secret-scanning repo |
+| Commit signing config | `gpgsign=true`, `git commit` exit 0 | Not what the config names — `user.signingkey` was a 0-byte file |
 
-The last one is the most self-implicating, which is why it is in the README and
-not buried: see [Rule 5](#rule-5-a-rule-that-passed-its-own-tests-and-could-not-see-its-target).
+The custom-rule row is the most self-implicating, which is why it is in the
+README and not buried: see
+[Rule 5](#rule-5-a-rule-that-passed-its-own-tests-and-could-not-see-its-target).
+The last row is the newest, and was found in the tooling of the very session
+that wrote up the other seven.
 
 So this orchestrator emits **two outputs, not one**:
 
@@ -403,21 +408,38 @@ normalizer/
   model.py             Finding, Coverage, Severity, SeveritySource
   runner.py            executes legs, collects INDEPENDENT coverage probes
   attest.py            coverage attestation + cross-checks
-  normalize.py         merge, dedupe, sort (no policy)
+  normalize.py         merge, dedupe, sort, corroborate (no policy)
   gate.py              policy + exceptions -> one verdict
   adapters/
     base.py            Adapter protocol, ScanRun, redaction boundary
     bandit.py  gitleaks.py  semgrep.py  trivy.py
 policy.yaml            all thresholds, actions, taxonomy (no logic in Python)
-exceptions.yaml        dated, attributed, expiring suppressions
-tests/
-  fixtures/            real baseline output; synthetic ones labelled inline
-  test_adapters.py  test_attest.py
+exceptions.example.yaml  template only -- see note below
 rules/
   *.yaml               custom rules (no registry dependency)
   tests/               semgrep --test fixtures, annotated ruleid:/ok:
   semgrepignore.template   the scope declaration installed during a scan
+tests/
+  fixtures/            real baseline output; synthetic ones labelled inline
+  test_adapters.py  test_attest.py  test_gate.py
+infra/
+  main.tf  outputs.tf  .terraform.lock.hcl
+  policy/terraform.rego    Conftest/OPA policy, run against `terraform show -json`
+  tests/                   plan fixtures: compliant, violating, no-sub
+  README.md  SIGNING.md
+.github/workflows/
+  ci.yml                 unit + rule tests, policy fixtures (fetch-depth: 0)
+  aws-oidc-smoke.yml     assumes the deployed role via OIDC, no static keys
+  release.yml            source archive + SBOMs, keyless Cosign signed
+README.md  LESSONS.md  AI-USE.md  LICENSE
+.gitignore  .semgrepignore
 ```
+
+Only `exceptions.example.yaml` ships here. **Real exceptions live in the
+consumer repo they excuse** (`.security/exceptions.yaml`), bound to that repo's
+identity — a suppression is a claim about one codebase, made by someone with
+standing in it. Policy is centralized; exceptions are federated; expiry is what
+keeps federation from becoming abdication.
 
 Run tests: `python3 -m pytest tests/ -q`
 
