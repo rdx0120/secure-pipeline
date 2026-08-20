@@ -404,6 +404,41 @@ See [infra/SIGNING.md](infra/SIGNING.md) for why pinning only
 certify — a verification step that always passes, which is this project's thesis
 appearing in the signing layer.
 
+## Using this from another repository
+
+Consumers call the reusable workflow; they do not copy it.
+
+```yaml
+# .github/workflows/security.yml in the consuming repository
+name: security
+on: [push, pull_request]
+jobs:
+  scan:
+    uses: rdx0120/secure-pipeline/.github/workflows/scan.yml@main
+```
+
+That is the whole integration. The consumer supplies one more thing, in its own
+repository:
+
+```yaml
+# .security/exceptions.yaml
+version: 1
+project: owner/repo          # verified against the scanned repo's origin
+exceptions: []
+```
+
+**Policy is centralized; exceptions are federated.** `policy.yaml` lives here and
+a consumer cannot lower a threshold by editing its own repository. Suppressions
+live with the code they excuse, because a suppression is a claim about one
+codebase: *"not attacker-supplied in the current deployment"* is true of a
+scanner export and false of a `.yarc` file parsed by an arena decoder. Pointing
+one repository's exceptions at another fails loudly rather than applying them.
+
+Expect consumers to fail differently, and expect that to be the point. A repo
+without a lockfile will fail its SCA leg with `FAIL_NO_COVERAGE` — not because
+the pipeline is misconfigured for it, but because nothing there resolves to a
+package and an empty dependency scan is not a clean one.
+
 ## Layout
 
 ```
@@ -433,6 +468,7 @@ infra/
   README.md  SIGNING.md
 .github/workflows/
   ci.yml                 unit + rule tests, policy fixtures (fetch-depth: 0)
+  scan.yml               REUSABLE pipeline consumers call via workflow_call
   aws-oidc-smoke.yml     assumes the deployed role via OIDC, no static keys
   scorecard.yml          weekly OpenSSF Scorecard, JSON for the normalizer
   release.yml            source archive + SBOMs, keyless Cosign signed

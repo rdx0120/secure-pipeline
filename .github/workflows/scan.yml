@@ -1,0 +1,121 @@
+name: scan
+
+# Reusable scanning pipeline. Consumers call this; they do not copy it.
+#
+# THE SPLIT THIS ENFORCES:
+#   policy.yaml      lives HERE and is centrally governed. A consumer cannot
+#                    lower a threshold or change an action by editing its own
+#                    repository.
+#   exceptions.yaml  lives in the CONSUMER at .security/exceptions.yaml, bound
+#                    to that repository's identity. A suppression is a claim
+#                    about one codebase, made by someone with standing in it:
+#                    "not attacker-supplied in the current deployment" is true
+#                    of a scanner export and false of a .yarc file.
+#
+# Policy is centralized; exceptions are federated; expiry is what keeps
+# federation from becoming abdication.
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python used to run the orchestrator."
+        type: string
+        default: "3.11"
+      orchestrator-ref:
+        description: >-
+          Ref of rdx0120/secure-pipeline to run. Should match the @ref on the
+          `uses:` line that called this workflow -- the `uses:` pins the
+          workflow FILE, this pins the CODE, and they are separate things.
+        type: string
+        default: "main"
+      semgrep-config:
+        description: >-
+          Semgrep ruleset. Defaults to the orchestrator's own rules/. A consumer
+          may add its own path, but cannot remove the shared rules.
+        type: string
+        default: "rules/"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      # The CONSUMER repository. fetch-depth: 0 is not optional -- the default
+      # of 1 reduces secret scanning to the tip commit, and this pipeline's own
+      # attestation reports FAIL_UNVERIFIABLE on a shallow checkout rather than
+      # letting that pass.
+      - name: Check out the repository being scanned
+        uses: actions/checkout@v4
+        with:
+          path: target
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the orchestrator
+        uses: actions/checkout@v4
+        with:
+          repository: rdx0120/secure-pipeline
+          ref: ${{ inputs.orchestrator-ref }}
+          path: orchestrator
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install the orchestrator
+        working-directory: orchestrator
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv sync --locked --extra dev
+
+      - name: Install scanners
+        run: |
+          pip install semgrep bandit
+          # Module path is zricethezav, not gitleaks/gitleaks -- the go.mod
+          # still declares the old path and `go install` refuses the new one.
+          go install github.com/zricethezav/gitleaks/v8@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      # The orchestrator decides block vs warn. Every scanner is forced to exit
+      # 0 by the runner, because semgrep and trivy both return 0 with findings
+      # present -- trusting a scanner's exit code fails open.
+      #
+      # Exceptions are read from the TARGET repo, not from here.
+      - name: Run the pipeline
+        id: scan
+        continue-on-error: true
+        working-directory: orchestrator
+        run: |
+          uv run --locked python -m normalizer ../target \
+            --out ../out \
+            --semgrep-config "${{ inputs.semgrep-config }}" \
+            --policy policy.yaml
+
+      # Always upload, especially on failure -- the attestation is the evidence
+      # for WHY it failed, and it is most needed when the job is red.
+      - name: Upload attestation and findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-${{ github.repository_owner }}-${{ github.event.repository.name }}
+          path: |
+            out/attestation.json
+            out/findings.json
+            out/gate.json
+
+      # Exit codes are the orchestrator's, and they are not collapsed:
+      #   0 clean   1 findings blocked   2 coverage failure   3 unresolved severity
+      # "we found problems" and "we cannot see" are different pages.
+      - name: Gate
+        if: always()
+        run: |
+          if [ "${{ steps.scan.outcome }}" != "success" ]; then
+            echo "::error::security gate failed -- see the attestation artifact"
+            exit 1
+          fi
