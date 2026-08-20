@@ -60,7 +60,7 @@ asymmetry is the whole design in one exit code — because a scanner that
 examined nothing emits exactly the same empty findings array as a clean
 codebase.
 
-## Nine instances of the same failure
+## Eleven instances of the same failure
 
 Every one below is from my own work, in a different domain, and none announced
 itself. Each was found by asking a tool to prove what it examined rather than
@@ -76,13 +76,15 @@ reading its exit code. Full write-ups in [LESSONS.md](LESSONS.md).
 | My own custom rule | Passed 5/5 of its own fixtures | Structurally blind to the code it was written for |
 | Push Protection | Bypass offered, push would have succeeded | A secret-shaped fixture in a secret-scanning repo |
 | This repo's signed release SBOM | 6 artifacts signed and verified, workflow green | Zero Python packages — no lockfile existed to resolve |
+| The attestation itself | Table rendered, verdict PASS | Only the four legs it hardcoded — a fifth was dropped silently |
+| Scorecard `Signed-Releases` | Check ran, scored 0/10 | A filename suffix, not whether the release verifies |
 | Commit signing config | `gpgsign=true`, `git commit` exit 0 | Not what the config names — `user.signingkey` was a 0-byte file |
 
 The custom-rule row is the most self-implicating, which is why it is in the
 README and not buried: see
 [Rule 5](#rule-5-a-rule-that-passed-its-own-tests-and-could-not-see-its-target).
 The last row is the newest, and was found in the tooling of the very session
-that wrote up the other eight.
+that wrote up the other ten.
 
 So this orchestrator emits **two outputs, not one**:
 

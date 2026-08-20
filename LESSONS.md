@@ -1,14 +1,14 @@
 # Lessons
 
-Eight instances of one failure: **a check that runs cleanly and verifies
-nothing.** Seven are from building this pipeline; the eighth is from writing
+Ten instances of one failure: **a check that runs cleanly and verifies
+nothing.** Nine are from building this pipeline; the tenth is from writing
 it up. None announced itself. Each was found by asking a tool to prove what
 it examined rather than reading its exit code.
 
 They are ordered by how self-implicating they are. The last three are about my
 own rule, my own fixture, and my own tooling — and they are the ones worth
 reading. The final one was found in the tooling of the session that wrote up
-the other seven, which is the best evidence available that this is a live pattern
+the other nine, which is the best evidence available that this is a live pattern
 and not hindsight.
 
 ---
@@ -262,9 +262,74 @@ an SBOM, count what is in it.
 
 ---
 
-## 8. A signing configuration that named a key that did not exist
+## 8. The attestation itself dropped a leg
 
-Found in the container tooling of the session writing up the seven instances
+**Symptom.** The Scorecard adapter ran, parsed its output, produced findings and
+a coverage record — and did not appear in the attestation table at all. No
+error, no warning, no row.
+
+**Reality.** `attest()` iterated a hardcoded `EXPECTED_LEGS` tuple and looked up
+each name in the results. Any leg *outside* that tuple was silently absent from
+the report. The attestation answered "did the four legs I know about run?" while
+presenting itself as "here is what every leg examined."
+
+**Why it matters more than an ordinary bug.** This is the coverage attestation
+— the component whose entire purpose is refusing to let a scanner's silence pass
+as success — having a coverage gap of its own. It would have reported PASS on a
+run where a fifth leg failed completely, because the failing leg was not on the
+list of legs it thought to check.
+
+**Fix.** Report every leg that produced a result, and *additionally* require the
+expected ones. Absence from the required set is allowed; absence from the report
+is not.
+
+**The generalisable rule.** A checklist-driven check is bounded by the
+imagination of whoever wrote the checklist. When the thing being enumerated can
+grow, enumerate what is actually present and assert the required subset against
+it — never the other way round.
+
+---
+
+## 9. A check reported a control absent while it was demonstrably present
+
+The pattern inverted, and the more dangerous direction of the two.
+
+**Symptom.** Scorecard's `Signed-Releases` check scored **0/10**: *"release
+artifact v0.1.0 not signed."*
+
+**Reality.** The release is signed. Every artifact carries a keyless Cosign
+signature; verification succeeds against a pinned certificate identity, and the
+deliberately-wrong-identity case is rejected. That was confirmed by running
+`cosign verify-blob` against the published assets, not by reading the workflow.
+
+**Cause.** `Signed-Releases` matches on **filename suffix** — `*.sig`, `*.asc`,
+`*.sigstore`, `*.intoto.jsonl`. Sigstore bundles here are named
+`*.sigstore.json`, which does not match `*.sigstore`. The check tests a proxy
+for the property (does a file *look* like a signature?) rather than the property
+itself (is this artifact verifiably signed?).
+
+**We did not rename the files.** Renaming would raise the score without changing
+a single fact about the release, which is optimising the measurement rather than
+the thing measured. The score stays 0 and this entry explains why.
+
+**Why this direction is worse.** Every other instance in this list is a check
+that passed while verifying nothing — a false negative that lets a real problem
+through. This is the opposite: a false *positive* about absence. Both corrode
+trust in the check, but a false alarm trains people to dismiss the tool, and the
+dismissal habit carries over to the true alarms. A red light that is wrong is
+how a team learns to ignore red lights.
+
+**The generalisable rule.** A check tests what it tests, not what it is named
+after. Before acting on a result — or on a score — establish whether the check
+measures the property or a proxy for it, and whether your artifacts happen to
+satisfy the proxy. A control can be present and score zero; a control can be
+absent and score ten.
+
+---
+
+## 10. A signing configuration that named a key that did not exist
+
+Found in the container tooling of the session writing up the nine instances
 above. That is not a flourish: it is the point. The pattern is not something I
 found once and learned; it is something that keeps happening, including to the
 person writing the list.
@@ -321,8 +386,8 @@ unverified things as fact. It survived until someone ran
 `git cat-file commit HEAD | grep gpgsig`, found a valid signature, and traced the
 real cause to `gpg.ssh.program` and an unset `allowedSignersFile`.
 
-The other seven instances were found in tooling. This one was found in the
-write-up *of* those seven, on the second pass, by the same discipline the
+The other nine instances were found in tooling. This one was found in the
+write-up *of* those nine, on the second pass, by the same discipline the
 write-up describes — and the near-miss is the more useful half of it. **The
 correction is the instance.** A pattern you can only recognise in hindsight is a
 story; one that catches you while you are actively documenting it is a pattern.
@@ -335,8 +400,9 @@ Every instance has the same shape: a mechanism that was present, ran without
 error, and verified less than it appeared to. In most of them the reported output
 was indistinguishable from success. In one, the reported output was a passing
 test suite. In one, the reported output was a validly signed artifact describing
-nothing. In the last, the reported output was a configuration file that named
-something which did not exist.
+nothing. In one it was a report that omitted a whole leg, and in one a red light
+about a control that was demonstrably present. In the last, the reported output
+was a configuration file that named something which did not exist.
 
 The generalisation is not "scanners are unreliable." It is that **absence of
 findings carries no information unless you separately establish what was

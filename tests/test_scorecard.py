@@ -133,3 +133,29 @@ def test_aggregate_score_recorded():
 def test_fixture_labelling():
     assert "Real OpenSSF Scorecard" in load("scorecard.json")["_fixture_note"]
     assert "SYNTHETIC" in load("scorecard-inconclusive.json")["_fixture_note"]
+
+
+def test_partial_inconclusive_matches_the_real_remote_run():
+    """The shape observed on the first real remote run.
+
+    18 checks requested; CI-Tests and Packaging returned -1 (inconclusive), so
+    16 resolved. The document here is built in-test from the real local fixture
+    rather than shipped as a captured artifact -- the counts come from the real
+    run, but this exact JSON was not produced by the tool and is not presented
+    as though it were.
+
+    The row must clear its floor and still report partial coverage: two checks
+    were requested, ran, and told us nothing.
+    """
+    doc = load("scorecard.json")
+    doc["checks"][0]["score"] = -1
+    doc["checks"][1]["score"] = -1
+    r = ScorecardAdapter().parse(ScanRun(
+        tool="scorecard", documents={"findings": doc},
+        probes={"scorecard_checks_requested": 18}))
+    assert r.coverage.examined == 3          # 5 in this fixture, 2 knocked out
+    assert r.coverage.denominator == 18
+    assert r.coverage.status is CoverageStatus.OK      # floor cleared
+    assert r.coverage.ratio < 1.0                      # but not full coverage
+    # An inconclusive check is not a finding in either direction.
+    assert not any(f.severity is Severity.UNKNOWN for f in r.findings)

@@ -11,22 +11,28 @@ permissions:
   contents: read
 
 jobs:
+  # Two jobs, and the split is forced rather than stylistic.
+  #
+  # scorecard-action's publish step rejects the whole run with
+  #   400 "scorecard job must only have steps with `uses`"
+  # if the job it runs in contains ANY `run:` step. Our JSON generation is
+  # `run:` steps, so keeping them in the same job made publishing fail while
+  # Scorecard itself succeeded. The fix is separation, not turning publishing
+  # off: `publish_results: false` would have made the error go away without
+  # producing the thing the error was about.
   analysis:
     runs-on: ubuntu-latest
     permissions:
-      # Least privilege at the JOB level, which is what Scorecard's
-      # Token-Permissions check looks for.
+      # Least privilege at the JOB level, which is what Token-Permissions wants.
       contents: read
-      id-token: write        # publish results to the OpenSSF API
-      security-events: write # upload SARIF to code scanning
-
+      id-token: write         # publish results to the OpenSSF API
+      security-events: write  # upload SARIF to code scanning
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Run Scorecard
-        uses: ossf/scorecard-action@v2.4.0
+      - uses: ossf/scorecard-action@v2.4.0
         with:
           results_file: scorecard.sarif
           results_format: sarif
@@ -36,16 +42,28 @@ jobs:
         with:
           sarif_file: scorecard.sarif
 
-      # The JSON is what the normalizer consumes; SARIF goes to code scanning.
+  # Machine-readable JSON for the normalizer. Separate job: every `run:` step
+  # lives here, where no publish endpoint is watching.
+  report:
+    runs-on: ubuntu-latest
+    needs: analysis
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       # The check list is written out ALONGSIDE the results and becomes the
       # attestation's denominator -- measured from what we asked for, not from
       # what Scorecard reported back. Reading the denominator out of the same
       # document as the numerator is how a shallow clone reported "1 of 1".
-      - name: Re-run for machine-readable JSON
+      - name: Generate machine-readable JSON
         env:
           GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           CHECKS="Binary-Artifacts,Branch-Protection,CI-Tests,CII-Best-Practices,Code-Review,Contributors,Dangerous-Workflow,Dependency-Update-Tool,Fuzzing,License,Maintained,Packaging,Pinned-Dependencies,SAST,Security-Policy,Signed-Releases,Token-Permissions,Vulnerabilities"
+
           go install github.com/ossf/scorecard/v5@latest
           "$(go env GOPATH)/bin/scorecard" \
             --repo=github.com/${{ github.repository }} \
@@ -64,5 +82,4 @@ jobs:
           name: scorecard-results
           path: |
             scorecard.json
-            scorecard.sarif
             scorecard-checks-requested.txt

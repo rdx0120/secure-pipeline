@@ -49,7 +49,7 @@ contents.
 The stronger claim than *"can defend every decision in
 [LESSONS.md](LESSONS.md) under questioning"* is that two of those instances were
 found **during the write-up itself, by reviewing claims before recording them.**
-Instance 8's postscript documents one: an assertion about commit signing was
+Instance 10's postscript documents one: an assertion about commit signing was
 carried into a handoff brief from an unverified report and restated as fact — in
 a document about not doing that — and was caught only because the claim was
 reproduced before it was written down. A cross-reference in `SIGNING.md` was
