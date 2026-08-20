@@ -1,0 +1,35 @@
+name: release-signing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Create test artifact
+        run: |
+          echo "secure-pipeline signed artifact" > release-artifact.txt
+
+      - name: Sign artifact
+        run: |
+          cosign sign-blob release-artifact.txt \
+            --bundle release-artifact.sigstore.json \
+            --yes
+
+      - name: Verify artifact
+        run: |
+          cosign verify-blob release-artifact.txt \
+            --bundle release-artifact.sigstore.json \
+            --certificate-identity "https://github.com/rdx0120/secure-pipeline/.github/workflows/release.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
