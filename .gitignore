@@ -10,3 +10,4 @@ venv/
 *.tfstate.*
 tfplan
 tfplan.json
+*.patch
