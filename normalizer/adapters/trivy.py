@@ -78,7 +78,7 @@ class TrivyAdapter:
             msg = r.get("message", {}).get("text", "")
             cve_match = _CVE.search(rule_id) or _CVE.search(msg)
             # SCA findings identify a package, not a line. The surrogate is what
-            # keeps two CVEs on different packages in one requirements.txt from
+            # keeps two CVEs on different packages in one manifest from
             # collapsing to the same id.
             component = _component(msg)
             snippet, digest, basis = redact(
@@ -129,14 +129,32 @@ class TrivyAdapter:
             # against 3 declared produced a meaningless "16 of 3".
             denominator=run.probes.get("lockfile_packages"),
             denominator_source="runner probe: packages parsed from uv.lock",
-            detail=(
-                "trivy pip parser cannot resolve unpinned ranges; an unpinned "
-                "requirements.txt yields zero packages and exit 0"
-                if examined == 0
-                else None
-            ),
+            detail=_no_coverage_detail(run) if examined == 0 else None,
         )
         return AdapterResult(findings=findings, coverage=coverage)
+
+
+def _no_coverage_detail(run: ScanRun) -> str:
+    """Explain a zero-package scan in terms of THIS repository.
+
+    The previous message read "an unpinned requirements.txt yields zero packages
+    and exit 0" -- true of the first repository this pipeline ever scanned, and
+    asserted about every repository since. Told YARAdec, which has no
+    `requirements.txt` at all, that its `requirements.txt` was the problem.
+
+    A diagnostic that names a file the repository does not contain is making a
+    claim it has not checked, which is the failure this project is about.
+    """
+    manifests = run.context.get("manifests")
+    if manifests is None:
+        return ("no packages resolved; the manifests present were not recorded, "
+                "so the cause cannot be attributed")
+    if not manifests:
+        return ("no dependency manifest found in this repository, so there was "
+                "nothing for trivy to resolve")
+    found = ", ".join(manifests)
+    return (f"no packages resolved from {found}. trivy needs concrete pinned "
+            f"versions -- a lockfile -- not declared ranges")
 
 
 def _component(message: str) -> str | None:

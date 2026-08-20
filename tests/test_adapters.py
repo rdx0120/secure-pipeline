@@ -173,7 +173,9 @@ class TestTrivy:
         )
         assert r.findings == []
         assert r.coverage.status is CoverageStatus.FAIL_NO_COVERAGE
-        assert "unpinned" in (r.coverage.detail or "")
+        # The detail must describe the scanned repo, not a remembered one --
+        # see TestZeroPackageDiagnostic.
+        assert r.coverage.detail and "requirements.txt" not in r.coverage.detail
 
     def test_clean_scan_is_distinguishable_from_blind_scan(self):
         blind = TrivyAdapter().parse(
@@ -301,3 +303,47 @@ def test_shallow_clone_is_unverifiable_not_a_pass():
     assert shallow.coverage.status is CoverageStatus.FAIL_UNVERIFIABLE
     assert "SHALLOW" in shallow.coverage.evidence
     assert "fetch-depth: 0" in shallow.coverage.detail
+
+
+# ------------------------------------------- zero-package diagnostics --------
+class TestZeroPackageDiagnostic:
+    """A zero-package report must describe THIS repository.
+
+    The message used to say "an unpinned requirements.txt yields zero packages",
+    which was true of the first repo the pipeline scanned and asserted about
+    every one after it -- including YARAdec, which has no requirements.txt.
+    """
+
+    def empty(self, context):
+        return TrivyAdapter().parse(ScanRun(
+            tool="trivy-fs", documents={"findings": load("trivy-fs-empty.sarif")},
+            probes={"packages": 0}, context=context))
+
+    def test_names_the_manifests_actually_found(self):
+        d = self.empty({"manifests": ["pyproject.toml"]}).coverage.detail
+        assert "pyproject.toml" in d
+        assert "requirements.txt" not in d      # the file YARAdec does not have
+
+    def test_says_so_when_there_is_no_manifest_at_all(self):
+        d = self.empty({"manifests": []}).coverage.detail
+        assert "no dependency manifest found" in d
+        assert "requirements.txt" not in d
+
+    def test_does_not_attribute_a_cause_it_did_not_check(self):
+        """No detection recorded -> no claim about why."""
+        d = self.empty({}).coverage.detail
+        assert "cannot be attributed" in d
+        assert "requirements.txt" not in d
+
+    def test_multiple_manifests_are_all_named(self):
+        d = self.empty({"manifests": ["requirements.txt", "pyproject.toml"]}).coverage.detail
+        assert "requirements.txt" in d and "pyproject.toml" in d
+
+
+def test_manifest_detection_reports_what_exists(tmp_path):
+    from normalizer.runner import detect_manifests
+    assert detect_manifests(tmp_path) == []
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
+    assert detect_manifests(tmp_path) == ["pyproject.toml"]
+    (tmp_path / "uv.lock").write_text("version = 1\n")
+    assert detect_manifests(tmp_path) == ["uv.lock", "pyproject.toml"]

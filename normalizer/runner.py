@@ -46,6 +46,22 @@ class Probes:
         }
 
 
+#: Dependency manifests we can recognise, in the order a report should read.
+#: Presence is what matters here, not parsing -- the point is to describe the
+#: repository in front of us rather than the one the pipeline was built around.
+MANIFESTS = (
+    "uv.lock", "poetry.lock", "Pipfile.lock", "requirements.txt",
+    "requirements-dev.txt", "pyproject.toml", "setup.py", "setup.cfg",
+    "package-lock.json", "yarn.lock", "go.mod", "Cargo.lock", "Gemfile.lock",
+    "pom.xml", "build.gradle",
+)
+
+
+def detect_manifests(root: Path) -> list[str]:
+    """Dependency manifests present in the repository being scanned."""
+    return [m for m in MANIFESTS if (root / m).exists()]
+
+
 def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, check=False)
 
@@ -217,6 +233,8 @@ def scan(root: Path, out: Path, semgrep_config: str) -> dict[str, ScanRun]:
                 tool="trivy-fs", documents={"findings": json.loads(p.read_text())},
                 probes=probes, exit_code=r.returncode, stdout=r.stdout, stderr=r.stderr,
                 workspace=root,
+                # So a zero-package report can name what it actually found.
+                context={"manifests": detect_manifests(root)},
             )
     return runs
 

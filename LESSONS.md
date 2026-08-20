@@ -325,6 +325,26 @@ measures the property or a proxy for it, and whether your artifacts happen to
 satisfy the proxy. A control can be present and score zero; a control can be
 absent and score ten.
 
+**A variant, found in this pipeline's own output.** When the SCA leg resolves
+zero packages it explains why, and the explanation read: *"an unpinned
+`requirements.txt` yields zero packages and exit 0."* That was true of the first
+repository this pipeline ever scanned. It was then asserted about every
+repository afterwards — including YARAdec, which has no `requirements.txt` at
+all and declares its dependencies in `pyproject.toml`. The tool told a project
+that a file it does not contain was the cause of its problem.
+
+The verdict was right and the reasoning was fabricated, which is the harder
+version to catch: nobody re-reads the explanation attached to a correct answer.
+It is the same shape as the check above — a message describing a proxy (the
+repository the author had in mind) rather than the property (the repository
+actually in front of it), and it survived because it was *usually* true.
+
+The fix was to make the diagnostic report what it detected, and to say so
+explicitly when nothing was detected or when detection was not recorded —
+rather than naming a file it had never looked for. **A diagnostic is a claim.
+It needs the same evidence as any other claim the tool makes, and being attached
+to a correct verdict does not exempt it.**
+
 ---
 
 ## 10. A signing configuration that named a key that did not exist
