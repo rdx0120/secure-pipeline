@@ -82,22 +82,34 @@ Verification contacts Sigstore's transparency log and TUF root
 (`rekor.sigstore.dev`, `tuf-repo-cdn.sigstore.dev`), so it needs network access.
 It cannot be run air-gapped.
 
-## Where the artifacts live, and why that matters
+## Where the artifacts live
 
-The signed files are currently uploaded with `actions/upload-artifact`, which
-means they are **workflow-run artifacts, not release assets**. Two consequences a
-reader should know before trying the commands above:
+The six files are attached to a **GitHub Release**, published by the last step of
+`release.yml`. Release assets do not expire and are anonymously fetchable, so
+anyone reviewing this repository can download them and run the verification above
+without a GitHub login and without access to the Actions tab.
 
-- They expire (90 days by default) and disappear with the run.
-- Downloading them requires being signed in to GitHub; they are not
-  anonymously fetchable.
+```sh
+gh release download v0.1.0 -R rdx0120/secure-pipeline
+# or, without gh:
+curl -LO https://github.com/rdx0120/secure-pipeline/releases/download/v0.1.0/secure-pipeline-source.tar.gz
+curl -LO https://github.com/rdx0120/secure-pipeline/releases/download/v0.1.0/secure-pipeline-source.sigstore.json
+```
 
-So a stranger reviewing this repository cannot presently run the verification
-themselves. Attaching the six files to a GitHub Release is what would make these
-signatures independently checkable by someone who does not have access to the
-Actions tab — and until that happens, the signing story is verifiable by the
-maintainer and taken on trust by everyone else. **Signed artifacts nobody outside
-can verify are a claim about the pipeline, not a property of it.**
+This is deliberate, and it is the difference between a property and a claim.
+The workflow previously published only through `actions/upload-artifact`, whose
+artifacts expire after 90 days and require being signed in to download — meaning
+the commands in this document were, in practice, runnable only by the
+maintainer. **Signed artifacts nobody outside can verify are a claim about the
+pipeline, not a property of it.** Run artifacts are still uploaded for
+run-scoped debugging; the Release is the durable, public copy.
+
+Releases are cut by dispatching `release-signing` from `main` with a tag as
+input. The workflow is deliberately **not** triggered by tag pushes: a
+tag-triggered run carries an OIDC subject of `ref:refs/tags/<tag>`, so its
+certificate identity would be `release.yml@refs/tags/<tag>` and every pinned
+verification here — and inside the workflow itself — would stop matching. The
+tag names the Release; it does not change who signed it.
 
 ## What is deliberately absent
 

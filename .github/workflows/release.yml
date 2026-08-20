@@ -1,10 +1,25 @@
 name: release-signing
 
 on:
+  # Deliberately NOT `push: tags:`. A tag-triggered run has an OIDC subject of
+  # `ref:refs/tags/<tag>`, so Fulcio would issue a certificate whose identity is
+  # `release.yml@refs/tags/<tag>` -- and every verify command in this workflow
+  # and in infra/SIGNING.md is pinned to `@refs/heads/main`. Switching triggers
+  # would silently invalidate the documented verification.
+  #
+  # Dispatching from main keeps the signing identity stable; the tag is just the
+  # name the Release is published under, created from the current commit.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create (e.g. v0.1.0)"
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  # `contents: write` is required to create the Release and upload assets, and
+  # is the reason the artifacts become fetchable without an Actions login.
+  contents: write
   id-token: write
 
 jobs:
@@ -92,3 +107,27 @@ jobs:
             sbom.cdx.sigstore.json
             sbom.spdx.json
             sbom.spdx.sigstore.json
+
+      # Run artifacts expire in 90 days and require a GitHub login to download,
+      # so the verification commands in infra/SIGNING.md were not runnable by
+      # anyone outside the repository. Release assets do not expire and are
+      # anonymously fetchable -- which is what makes the signatures independently
+      # checkable rather than a claim.
+      #
+      # `gh` is preinstalled on GitHub runners; no third-party action is added
+      # to the release path.
+      - name: Publish signed artifacts to a GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          FILES="secure-pipeline-source.tar.gz secure-pipeline-source.sigstore.json
+                 sbom.cdx.json sbom.cdx.sigstore.json
+                 sbom.spdx.json sbom.spdx.sigstore.json"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" $FILES --clobber
+          else
+            gh release create "$TAG" $FILES \
+              --title "$TAG" \
+              --notes "Keyless Cosign signatures over the source archive and both SBOMs. Verification commands, including the identity pin and a negative case, are in infra/SIGNING.md."
+          fi
