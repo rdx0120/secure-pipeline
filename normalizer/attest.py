@@ -80,7 +80,8 @@ def cross_checks(coverages: dict[str, Coverage]) -> list[CrossCheck]:
             ok=trivy.examined > 0,
             detail=(f"{trivy.examined} packages resolvable"
                     + (f" against {declared} in lockfile" if declared else "")
-                    + ("." if trivy.examined > 0 else
+		    + "."
+                    + ("" if trivy.examined > 0 else
                        " Nothing resolves -- SCA is a no-op reporting success.")),
         ))
     return out
