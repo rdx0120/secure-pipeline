@@ -1,0 +1,99 @@
+diff --git a/README.md b/README.md
+index d25d304..c55d0a2 100644
+--- a/README.md
++++ b/README.md
+@@ -332,44 +332,69 @@ The custom rules in this repo did not catch a planted bug in someone else's
+ code. They caught two real bugs **in themselves**, and only because they were
+ run against real code instead of their own fixtures.
+ 
+-## Infrastructure: policy-verified, not applied
++## Infrastructure: applied and gated
+ 
+-`infra/` contains an S3 artifact bucket and a GitHub OIDC role, gated by a
+-Conftest/OPA policy that runs against `terraform show -json` output.
++`infra/` deploys an S3 artifact bucket and a GitHub OIDC role, and it is
++**applied against a real AWS account** — 8 resources added, 0 changed, 0
++destroyed. The Conftest/OPA policy in `infra/policy/terraform.rego` gated the
++plan **before** apply, not after: the plan was rendered to JSON, run through the
++policy (6 tests, 6 passed, 0 failures), and that same checked plan was applied.
++A policy that runs after apply is an audit, not a control.
+ 
+-**The module has not been applied.** It is verified against a policy, not
+-operated, and this section will say so until that changes. The interesting
+-control is the OIDC trust condition:
++The bucket blocks all public access, encrypts with KMS, versions objects, and
++expires artifacts and noncurrent versions at 30 days with incomplete multipart
++uploads cleaned up at 7. It holds SARIF and normalized findings, so public
++access would be a correctness bug rather than a style issue.
++
++### The control worth reading
++
++The interesting part is the OIDC trust condition on the CI role:
+ 
+ ```hcl
+-values = ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"]
++condition {
++  test     = "StringEquals"
++  variable = "token.actions.githubusercontent.com:sub"
++  values   = ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"]
++}
+ ```
+ 
+-Written as `repo:org/*`, **any repository in the organisation can assume the CI
+-role** — including a fork or a repo created later. It passes `terraform
+-validate`, deploys cleanly, and is invisible in the console unless someone opens
+-the trust policy JSON. Omitting the `sub` condition entirely is worse: every
+-GitHub Actions run on GitHub can assume it.
++Written as `repo:org/*`, **any repository in the organisation can assume this
++role** — including a fork, or one created later by anyone with write access. It
++passes `terraform validate`, deploys cleanly, and is invisible in the console
++unless someone opens the trust policy JSON. Omitting the `sub` condition
++entirely is worse: every GitHub Actions run *on GitHub* can assume it.
+ 
+ Both are the same failure class as the rest of this repo: a control that is
+ present, syntactically valid, and verifies nothing.
+ 
++The deployed trust policy was read by hand in the IAM console to confirm what
++actually landed, rather than inferring it from the HCL:
++
+ ```
+-plan-compliant.json   6 tests, 6 passed              exit 0
+-plan-violating.json   5 failures (wildcard sub,
+-                      public ACL, no encryption)     exit 1
+-plan-no-sub.json      1 failure                      exit 1
++aud = sts.amazonaws.com
++sub = repo:rdx0120/secure-pipeline:ref:refs/heads/main
+ ```
+ 
+-The gate runs against the plan, before apply. A policy that runs after apply is
+-an audit, not a control.
+-
+-Signing follows the same status: the mechanism is verified with a local key
+-including tamper detection, but keyless signing needs the OIDC identity this
+-module would create. See [infra/SIGNING.md](infra/SIGNING.md) — including why
+-`--certificate-identity` on `verify-blob` carries the same failure mode as the
+-`sub` condition: omit it and verification accepts a signature from anyone
+-Fulcio will certify, which is a check that always passes.
++Pinned to one repository *and* one branch.
++
++### Verified end to end, not just planned
++
++- **The policy rejects what it should.** `plan-compliant.json` passes 6/6 (exit
++  0); `plan-violating.json` fails 5 checks and `plan-no-sub.json` fails 1 (both
++  exit 1). A gate whose negative cases pass is worthless, so CI asserts those
++  two *fail*.
++- **The OIDC path works.** `.github/workflows/aws-oidc-smoke.yml` assumes the
++  deployed role with `id-token: write` and no static AWS keys, calls STS, and
++  writes an object to the artifact bucket. Green on `main`.
++- **Keyless signing works.** `.github/workflows/release.yml` signs a source
++  archive and both SBOMs with Cosign against that workload identity, then
++  verifies all three with `--certificate-identity` *and*
++  `--certificate-oidc-issuer` pinned. Green on `main`.
++
++See [infra/SIGNING.md](infra/SIGNING.md) for why pinning only
++`--certificate-oidc-issuer` accepts a signature from anyone Fulcio will
++certify — a verification step that always passes, which is this project's thesis
++appearing in the signing layer.
+ 
+ ## Layout
+ 
