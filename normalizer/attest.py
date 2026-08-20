@@ -88,8 +88,14 @@ def cross_checks(coverages: dict[str, Coverage]) -> list[CrossCheck]:
 
 def attest(results: dict[str, AdapterResult]) -> tuple[dict, int]:
     coverages = {t: r.coverage for t, r in results.items()}
+    # Report every leg that produced a result, not just the required ones.
+    # Iterating EXPECTED_LEGS alone silently dropped any additional leg from the
+    # attestation -- a leg could run, be parsed, and never appear in the table.
+    # Scorecard is exactly that case: it is not required for a local scan
+    # (it needs a public repo and network), but when it runs it must be attested.
+    legs = list(EXPECTED_LEGS) + [t for t in sorted(coverages) if t not in EXPECTED_LEGS]
     rows = []
-    for leg in EXPECTED_LEGS:
+    for leg in legs:
         cov = coverages.get(leg)
         if cov is None:
             rows.append({

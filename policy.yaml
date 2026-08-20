@@ -12,6 +12,11 @@ coverage:
   fail_on_below_floor: true       # "the leg examined less than its floor"
   fail_on_partial: true           # examined < denominator (semgrep skipping tests/)
   # A leg that did not run at all is not a pass.
+  # Scorecard is deliberately NOT required here. It scores a public repository
+  # over the network and has no meaning for a local scan of arbitrary code, so
+  # requiring it would fail every ordinary run. When it does run, the
+  # attestation reports it like any other leg -- absence is allowed, silence is
+  # not.
   require_legs: [bandit, gitleaks, semgrep, trivy-fs]
 
 severity_floor:
@@ -22,6 +27,7 @@ severity_floor:
   semgrep: low
   gitleaks: high
   trivy-fs: medium
+  scorecard: medium
 
 actions:
   # `unknown` blocks. An unresolvable severity means the normalizer met a
@@ -75,3 +81,8 @@ taxonomy:
     trivy-fs: ["CVE-.*", "GHSA-.*"]
   assertion_used:
     bandit: ["B101"]
+  repository_posture:
+    # Repository-level supply-chain posture rather than a defect in the code.
+    # No other tool in this pipeline reports on it, so these never corroborate
+    # and never count as a disagreement.
+    scorecard: [".*"]

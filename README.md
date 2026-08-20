@@ -413,7 +413,7 @@ normalizer/
   gate.py              policy + exceptions -> one verdict
   adapters/
     base.py            Adapter protocol, ScanRun, redaction boundary
-    bandit.py  gitleaks.py  semgrep.py  trivy.py
+    bandit.py  gitleaks.py  semgrep.py  trivy.py  scorecard.py
 policy.yaml            all thresholds, actions, taxonomy (no logic in Python)
 exceptions.example.yaml  template only -- see note below
 pyproject.toml  uv.lock  declared + locked deps, so SBOMs resolve to something
@@ -423,7 +423,7 @@ rules/
   semgrepignore.template   the scope declaration installed during a scan
 tests/
   fixtures/            real baseline output; synthetic ones labelled inline
-  test_adapters.py  test_attest.py  test_gate.py
+  test_adapters.py  test_attest.py  test_gate.py  test_scorecard.py
 infra/
   main.tf  outputs.tf  .terraform.lock.hcl
   policy/terraform.rego    Conftest/OPA policy, run against `terraform show -json`
@@ -432,6 +432,7 @@ infra/
 .github/workflows/
   ci.yml                 unit + rule tests, policy fixtures (fetch-depth: 0)
   aws-oidc-smoke.yml     assumes the deployed role via OIDC, no static keys
+  scorecard.yml          weekly OpenSSF Scorecard, JSON for the normalizer
   release.yml            source archive + SBOMs, keyless Cosign signed
 README.md  LESSONS.md  AI-USE.md  LICENSE
 .gitignore  .semgrepignore

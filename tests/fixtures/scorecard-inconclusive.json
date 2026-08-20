@@ -1,0 +1,66 @@
+{
+ "_fixture_note": "SYNTHETIC. Hand-built to exercise the all-inconclusive path: Scorecard uses score -1 for a check it could not evaluate. This exact document was not observed from the tool; the -1 sentinel is from its documented schema.",
+ "date": "2026-08-20T04:35:26Z",
+ "repo": {
+  "name": "file:///tmp/t6",
+  "commit": "unknown"
+ },
+ "scorecard": {
+  "version": "v5.5.0",
+  "commit": "unknown"
+ },
+ "score": -1,
+ "checks": [
+  {
+   "details": null,
+   "score": -1,
+   "reason": "internal error: check could not be evaluated",
+   "name": "Binary-Artifacts",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#binary-artifacts",
+    "short": "Determines if the project has generated executable (binary) artifacts in the source repository."
+   }
+  },
+  {
+   "details": null,
+   "score": -1,
+   "reason": "internal error: check could not be evaluated",
+   "name": "Dangerous-Workflow",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#dangerous-workflow",
+    "short": "Determines if the project's GitHub Action workflows avoid dangerous patterns."
+   }
+  },
+  {
+   "details": null,
+   "score": -1,
+   "reason": "internal error: check could not be evaluated",
+   "name": "License",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#license",
+    "short": "Determines if the project has defined a license."
+   }
+  },
+  {
+   "details": null,
+   "score": -1,
+   "reason": "internal error: check could not be evaluated",
+   "name": "Pinned-Dependencies",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+    "short": "Determines if the project has declared and pinned the dependencies of its build process."
+   }
+  },
+  {
+   "details": null,
+   "score": -1,
+   "reason": "internal error: check could not be evaluated",
+   "name": "Token-Permissions",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#token-permissions",
+    "short": "Determines if the project's workflows follow the principle of least privilege."
+   }
+  }
+ ],
+ "metadata": null
+}

@@ -1,0 +1,68 @@
+name: scorecard
+
+on:
+  schedule:
+    # Weekly. Posture drifts without anyone touching the code -- a branch
+    # protection rule relaxed, a new workflow with broad permissions.
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      # Least privilege at the JOB level, which is what Scorecard's
+      # Token-Permissions check looks for.
+      contents: read
+      id-token: write        # publish results to the OpenSSF API
+      security-events: write # upload SARIF to code scanning
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: scorecard.sarif
+
+      # The JSON is what the normalizer consumes; SARIF goes to code scanning.
+      # The check list is written out ALONGSIDE the results and becomes the
+      # attestation's denominator -- measured from what we asked for, not from
+      # what Scorecard reported back. Reading the denominator out of the same
+      # document as the numerator is how a shallow clone reported "1 of 1".
+      - name: Re-run for machine-readable JSON
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CHECKS="Binary-Artifacts,Branch-Protection,CI-Tests,CII-Best-Practices,Code-Review,Contributors,Dangerous-Workflow,Dependency-Update-Tool,Fuzzing,License,Maintained,Packaging,Pinned-Dependencies,SAST,Security-Policy,Signed-Releases,Token-Permissions,Vulnerabilities"
+          go install github.com/ossf/scorecard/v5@latest
+          "$(go env GOPATH)/bin/scorecard" \
+            --repo=github.com/${{ github.repository }} \
+            --format=json --checks="$CHECKS" > scorecard.json
+
+          # A 0-byte file is a total failure that reports success. Scorecard has
+          # produced one with exit 0 (unreachable repo) AND with exit 1 (a check
+          # that cannot run), so the exit code proves nothing -- check the bytes.
+          test -s scorecard.json || { echo "scorecard.json is empty"; exit 1; }
+
+          echo "$CHECKS" | tr ',' '\n' | grep -c . > scorecard-checks-requested.txt
+          echo "requested $(cat scorecard-checks-requested.txt) checks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: |
+            scorecard.json
+            scorecard.sarif
+            scorecard-checks-requested.txt

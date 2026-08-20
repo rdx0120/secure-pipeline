@@ -1,0 +1,66 @@
+{
+ "_fixture_note": "Real OpenSSF Scorecard v5.5.0 output, captured with `scorecard --local` against this repository. Scores are genuine, including the 0/10 checks.",
+ "date": "2026-08-20T04:35:26Z",
+ "repo": {
+  "name": "file:///tmp/t6",
+  "commit": "unknown"
+ },
+ "scorecard": {
+  "version": "v5.5.0",
+  "commit": "unknown"
+ },
+ "score": 6.1,
+ "checks": [
+  {
+   "details": null,
+   "score": 10,
+   "reason": "no binaries found in the repo",
+   "name": "Binary-Artifacts",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#binary-artifacts",
+    "short": "Determines if the project has generated executable (binary) artifacts in the source repository."
+   }
+  },
+  {
+   "details": null,
+   "score": 10,
+   "reason": "no dangerous workflow patterns detected",
+   "name": "Dangerous-Workflow",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#dangerous-workflow",
+    "short": "Determines if the project's GitHub Action workflows avoid dangerous patterns."
+   }
+  },
+  {
+   "details": null,
+   "score": 9,
+   "reason": "license file detected",
+   "name": "License",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#license",
+    "short": "Determines if the project has defined a license."
+   }
+  },
+  {
+   "details": null,
+   "score": 0,
+   "reason": "dependency not pinned by hash detected -- score normalized to 0",
+   "name": "Pinned-Dependencies",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies",
+    "short": "Determines if the project has declared and pinned the dependencies of its build process."
+   }
+  },
+  {
+   "details": null,
+   "score": 0,
+   "reason": "detected GitHub workflow tokens with excessive permissions",
+   "name": "Token-Permissions",
+   "documentation": {
+    "url": "https://github.com/ossf/scorecard/blob/main/docs/checks.md#token-permissions",
+    "short": "Determines if the project's workflows follow the principle of least privilege."
+   }
+  }
+ ],
+ "metadata": null
+}

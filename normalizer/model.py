@@ -37,6 +37,10 @@ class SeveritySource(str, Enum):
     BANDIT_PROPERTIES = "bandit.results[].issue_severity+issue_confidence"
     TRIVY_SECURITY_SEVERITY = "trivy.rules[].properties.security-severity"
     SEMGREP_RULE_LEVEL = "semgrep.rules[].defaultConfiguration.level"
+    #: Scorecard scores each check 0-10. The numeric score is the tool's own
+    #: judgment and is banded here; -1 means the check did not run and is
+    #: treated as missing coverage rather than as a finding.
+    SCORECARD_CHECK_SCORE = "scorecard.checks[].score"
     #: gitleaks emits no severity vocabulary anywhere. `high` is OUR policy
     #: judgment, not the tool's: a verified live secret is high by definition.
     POLICY_CONSTANT = "policy.constant"
