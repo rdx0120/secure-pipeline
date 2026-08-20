@@ -1,14 +1,14 @@
 # Lessons
 
-Seven instances of one failure: **a check that runs cleanly and verifies
-nothing.** Six are from building this pipeline; the seventh is from writing
+Eight instances of one failure: **a check that runs cleanly and verifies
+nothing.** Seven are from building this pipeline; the eighth is from writing
 it up. None announced itself. Each was found by asking a tool to prove what
 it examined rather than reading its exit code.
 
 They are ordered by how self-implicating they are. The last three are about my
 own rule, my own fixture, and my own tooling — and they are the ones worth
 reading. The final one was found in the tooling of the session that wrote up
-the other six, which is the best evidence available that this is a live pattern
+the other seven, which is the best evidence available that this is a live pattern
 and not hindsight.
 
 ---
@@ -212,9 +212,59 @@ that contradicts the project.
 
 ---
 
-## 7. A signing configuration that named a key that did not exist
+## 7. The signed release SBOM catalogued zero Python packages
 
-Found in the container tooling of the session writing up the six instances
+The one that should not have happened, in the repository built to catch it.
+
+**Symptom.** `release.yml` generates a CycloneDX and an SPDX SBOM, signs both
+keyless, verifies both against a pinned identity, and uploads them. Green. Six
+artifacts, all signed, all verifying.
+
+**Reality.** The SBOMs listed **zero Python packages.** What they contained was
+`actions/checkout` (three times), `actions/setup-python`,
+`actions/upload-artifact`, `anchore/sbom-action/download-syft`,
+`aws-actions/configure-aws-credentials`, `sigstore/cosign-installer`, a
+Terraform provider, and four absolute runner paths. An SBOM for a Python project
+describing its own CI actions and nothing it depends on.
+
+**Cause.** `secure-pipeline` had no `requirements.txt`, no `pyproject.toml`, and
+no lockfile. Syft had nothing to resolve, so it cataloged what it could find —
+GitHub Actions references in workflow YAML — and reported success.
+
+**This is the Session 1 baseline finding, recurring.** The very first run found
+trivy and syft returning exit 0 over an unpinned `requirements.txt`: *0 packages,
+0 components, nothing at all.* That finding is why the coverage attestation
+exists. The fix — commit a lockfile so dependencies resolve — was applied to
+`kev-epss-prioritizer`, the consumer repo, and **never to this one.** The
+orchestrator that gates other projects on resolvable dependencies did not gate
+itself.
+
+Nothing caught it, because nothing was watching. The attestation runs against
+repositories this pipeline *scans*; the release workflow is a separate path with
+no coverage floor of its own. A signed, verified artifact described nothing, and
+every signature over it was valid.
+
+**Fix.** A `pyproject.toml` and `uv.lock` (8 packages resolved), and Syft pointed
+at the extracted archive rather than the build directory, with the SBOM's subject
+pinned to the artifact's sha256. Measured: **0 Python packages before, 8 after.**
+
+**What is still not fixed, and is documented rather than claimed.** Four
+components are named by absolute path. Pointing Syft at the archive does *not*
+remove them — it replaces the workspace path with Syft's own temp extraction
+path, and `--base-path` does not relativize them either. It is a Syft behaviour
+present in every scan mode tested. Extracting to a fixed path at least makes them
+deterministic instead of a fresh random directory per run.
+
+**The generalisable rule.** A supply-chain artifact can be signed, verified, and
+empty. Signature validity says nothing about content adequacy — they are
+independent properties, and the pipeline checked only the first. Before trusting
+an SBOM, count what is in it.
+
+---
+
+## 8. A signing configuration that named a key that did not exist
+
+Found in the container tooling of the session writing up the seven instances
 above. That is not a flourish: it is the point. The pattern is not something I
 found once and learned; it is something that keeps happening, including to the
 person writing the list.
@@ -271,8 +321,8 @@ unverified things as fact. It survived until someone ran
 `git cat-file commit HEAD | grep gpgsig`, found a valid signature, and traced the
 real cause to `gpg.ssh.program` and an unset `allowedSignersFile`.
 
-The other six instances were found in tooling. This one was found in the
-write-up *of* those six, on the second pass, by the same discipline the
+The other seven instances were found in tooling. This one was found in the
+write-up *of* those seven, on the second pass, by the same discipline the
 write-up describes — and the near-miss is the more useful half of it. **The
 correction is the instance.** A pattern you can only recognise in hindsight is a
 story; one that catches you while you are actively documenting it is a pattern.
@@ -284,7 +334,8 @@ story; one that catches you while you are actively documenting it is a pattern.
 Every instance has the same shape: a mechanism that was present, ran without
 error, and verified less than it appeared to. In most of them the reported output
 was indistinguishable from success. In one, the reported output was a passing
-test suite. In the last, the reported output was a configuration file that named
+test suite. In one, the reported output was a validly signed artifact describing
+nothing. In the last, the reported output was a configuration file that named
 something which did not exist.
 
 The generalisation is not "scanners are unreliable." It is that **absence of

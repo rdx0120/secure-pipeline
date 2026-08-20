@@ -24,13 +24,23 @@ jobs:
         run: |
           git archive --format=tar.gz --output=secure-pipeline-source.tar.gz HEAD
 
-      - name: Generate CycloneDX SBOM
+      # SBOMs describe the SIGNED ARCHIVE, not the build directory.
+      #
+      # `syft dir:.` cataloged the checkout, which is a different thing from the
+      # artifact being signed, and it ran twice -- so the second pass saw the
+      # first pass's output sitting in the directory. Extracting the archive to
+      # a fixed path and cataloging that makes the SBOM's subject the exact
+      # bytes that get signed, identified by digest.
+      - name: Generate SBOMs from the signed archive
         run: |
-          syft dir:. -o cyclonedx-json=sbom.cdx.json
-
-      - name: Generate SPDX SBOM
-        run: |
-          syft dir:. -o spdx-json=sbom.spdx.json
+          DIGEST="sha256:$(sha256sum secure-pipeline-source.tar.gz | cut -d' ' -f1)"
+          rm -rf /tmp/sbom-src && mkdir -p /tmp/sbom-src
+          tar xzf secure-pipeline-source.tar.gz -C /tmp/sbom-src
+          syft dir:/tmp/sbom-src \
+            --source-name secure-pipeline-source.tar.gz \
+            --source-version "$DIGEST" \
+            -o cyclonedx-json=sbom.cdx.json \
+            -o spdx-json=sbom.spdx.json
 
       - name: Sign source archive
         run: |

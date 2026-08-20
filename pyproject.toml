@@ -1,0 +1,35 @@
+[project]
+name = "secure-pipeline"
+version = "0.1.0"
+description = "Scanner orchestrator that emits findings and a coverage attestation"
+readme = "README.md"
+license = { file = "LICENSE" }
+# tomllib (runner.py, gate.py) is stdlib from 3.11.
+requires-python = ">=3.11"
+
+# The only third-party import in the package. Everything else the orchestrator
+# uses is stdlib.
+#
+# The scanners themselves are deliberately NOT listed here. bandit, gitleaks,
+# semgrep, syft and trivy are external binaries the runner shells out to via
+# shutil.which() -- three of them are Go, not pip-installable at all. Listing
+# semgrep as a Python dependency purely because it happens to ship on PyPI
+# would describe the tool inconsistently with the other four.
+dependencies = [
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["normalizer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

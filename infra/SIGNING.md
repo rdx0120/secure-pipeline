@@ -41,7 +41,7 @@ different branch, does not verify.
 Omitting it does not error. It does not warn. Verification simply succeeds
 against signatures it should have rejected — **a verification step that always
 passes**, which is the same shape as `%G?` returning `N` for both "unsigned" and
-"could not check" (see [LESSONS.md](../LESSONS.md) instance 7), and the same
+"could not check" (see [LESSONS.md](../LESSONS.md) instance 8), and the same
 shape as the OIDC `sub` condition in `main.tf` written as `repo:org/*`. A control
 that cannot fail is not a control.
 

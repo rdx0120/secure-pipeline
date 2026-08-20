@@ -60,7 +60,7 @@ asymmetry is the whole design in one exit code — because a scanner that
 examined nothing emits exactly the same empty findings array as a clean
 codebase.
 
-## Eight instances of the same failure
+## Nine instances of the same failure
 
 Every one below is from my own work, in a different domain, and none announced
 itself. Each was found by asking a tool to prove what it examined rather than
@@ -75,13 +75,14 @@ reading its exit code. Full write-ups in [LESSONS.md](LESSONS.md).
 | gitleaks on CI defaults | 1 commit scanned, coverage "1 of 1" | one commit of an unknown-length history |
 | My own custom rule | Passed 5/5 of its own fixtures | Structurally blind to the code it was written for |
 | Push Protection | Bypass offered, push would have succeeded | A secret-shaped fixture in a secret-scanning repo |
+| This repo's signed release SBOM | 6 artifacts signed and verified, workflow green | Zero Python packages — no lockfile existed to resolve |
 | Commit signing config | `gpgsign=true`, `git commit` exit 0 | Not what the config names — `user.signingkey` was a 0-byte file |
 
 The custom-rule row is the most self-implicating, which is why it is in the
 README and not buried: see
 [Rule 5](#rule-5-a-rule-that-passed-its-own-tests-and-could-not-see-its-target).
 The last row is the newest, and was found in the tooling of the very session
-that wrote up the other seven.
+that wrote up the other eight.
 
 So this orchestrator emits **two outputs, not one**:
 
@@ -415,6 +416,7 @@ normalizer/
     bandit.py  gitleaks.py  semgrep.py  trivy.py
 policy.yaml            all thresholds, actions, taxonomy (no logic in Python)
 exceptions.example.yaml  template only -- see note below
+pyproject.toml  uv.lock  declared + locked deps, so SBOMs resolve to something
 rules/
   *.yaml               custom rules (no registry dependency)
   tests/               semgrep --test fixtures, annotated ruleid:/ok:
