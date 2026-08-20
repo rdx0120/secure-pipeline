@@ -14,22 +14,71 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0.20.6
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v4.1.2
 
-      - name: Create test artifact
+      - name: Create source archive
         run: |
-          echo "secure-pipeline signed artifact" > release-artifact.txt
+          git archive --format=tar.gz --output=secure-pipeline-source.tar.gz HEAD
 
-      - name: Sign artifact
+      - name: Generate CycloneDX SBOM
         run: |
-          cosign sign-blob release-artifact.txt \
-            --bundle release-artifact.sigstore.json \
+          syft dir:. -o cyclonedx-json=sbom.cdx.json
+
+      - name: Generate SPDX SBOM
+        run: |
+          syft dir:. -o spdx-json=sbom.spdx.json
+
+      - name: Sign source archive
+        run: |
+          cosign sign-blob secure-pipeline-source.tar.gz \
+            --bundle secure-pipeline-source.sigstore.json \
             --yes
 
-      - name: Verify artifact
+      - name: Sign CycloneDX SBOM
         run: |
-          cosign verify-blob release-artifact.txt \
-            --bundle release-artifact.sigstore.json \
+          cosign sign-blob sbom.cdx.json \
+            --bundle sbom.cdx.sigstore.json \
+            --yes
+
+      - name: Sign SPDX SBOM
+        run: |
+          cosign sign-blob sbom.spdx.json \
+            --bundle sbom.spdx.sigstore.json \
+            --yes
+
+      - name: Verify source archive
+        run: |
+          cosign verify-blob secure-pipeline-source.tar.gz \
+            --bundle secure-pipeline-source.sigstore.json \
             --certificate-identity "https://github.com/rdx0120/secure-pipeline/.github/workflows/release.yml@refs/heads/main" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify CycloneDX SBOM
+        run: |
+          cosign verify-blob sbom.cdx.json \
+            --bundle sbom.cdx.sigstore.json \
+            --certificate-identity "https://github.com/rdx0120/secure-pipeline/.github/workflows/release.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Verify SPDX SBOM
+        run: |
+          cosign verify-blob sbom.spdx.json \
+            --bundle sbom.spdx.sigstore.json \
+            --certificate-identity "https://github.com/rdx0120/secure-pipeline/.github/workflows/release.yml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: secure-pipeline-signed-artifacts
+          path: |
+            secure-pipeline-source.tar.gz
+            secure-pipeline-source.sigstore.json
+            sbom.cdx.json
+            sbom.cdx.sigstore.json
+            sbom.spdx.json
+            sbom.spdx.sigstore.json
