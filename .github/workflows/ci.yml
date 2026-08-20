@@ -24,13 +24,31 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install
+      - name: Install dependencies, enforced from uv.lock
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pyyaml semgrep
+          pip install uv
+
+          # `--locked` FAILS the job if uv.lock is out of date with
+          # pyproject.toml. `--frozen` does NOT -- it means "do not update the
+          # lockfile" and exits 0 against a drifted pyproject. Both were tested
+          # in each direction before this flag was chosen: --frozen returned 0
+          # on a pyproject with an added dependency and an untouched lock, while
+          # --locked returned 1. A lock check that cannot fail is not a check.
+          uv sync --locked --extra dev
+
+          # semgrep is installed separately and is deliberately NOT a declared
+          # dependency. The runner shells out to it via shutil.which(), exactly
+          # like bandit, gitleaks, syft and trivy -- three of which are Go
+          # binaries and not pip-installable at all. Listing semgrep as a Python
+          # dependency purely because it happens to ship on PyPI would describe
+          # the tool inconsistently with the other four.
+          pip install semgrep
 
       - name: Unit tests
-        run: python -m pytest tests/ -q
+        # --locked again, so the lock is enforced even if the install step is
+        # ever reordered or cached around.
+        run: uv run --locked pytest tests/ -q
 
       - name: Semgrep rule tests
         # The rules are tested against their own annotated fixtures. LESSONS.md

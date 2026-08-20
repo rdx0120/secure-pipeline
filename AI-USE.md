@@ -44,6 +44,20 @@ wrong. Generated tests do not validate generated code. Only real inputs did.
 ## Attribution
 
 Commits are authored by the repository owner, who is responsible for the
-contents and can defend every decision in [LESSONS.md](LESSONS.md) under
-questioning. AI assistance is disclosed here as tooling, in the same way one
-would not credit an editor as a co-author.
+contents.
+
+The stronger claim than *"can defend every decision in
+[LESSONS.md](LESSONS.md) under questioning"* is that two of those instances were
+found **during the write-up itself, by reviewing claims before recording them.**
+Instance 8's postscript documents one: an assertion about commit signing was
+carried into a handoff brief from an unverified report and restated as fact — in
+a document about not doing that — and was caught only because the claim was
+reproduced before it was written down. A cross-reference in `SIGNING.md` was
+likewise found pointing at the wrong instance after a renumbering, by auditing
+the whole class rather than the one case that had been reported.
+
+Anyone can defend a decision after the fact. Catching your own unverified claims
+while making them is the part that is hard to fake, and it is the discipline this
+repository is actually about.
+
+AI assistance is disclosed here as tooling.
