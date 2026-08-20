@@ -432,3 +432,19 @@ or it will agree with whatever it is auditing.
 That is why this pipeline emits a coverage attestation alongside its findings,
 why `examined` and `denominator` are never two readings of the same source, and
 why the gate can exit non-zero on zero findings.
+
+**A closing note, from auditing this list.** A final audit of the whole project
+ran its own greps over these files — and reproduced the pattern twice while
+doing it. One grep reported the postscript above as **missing**: the phrase it
+searched for spans a line break, and the pattern could not match across it.
+Another silently skipped `"The other nine"` because it was written
+case-sensitively for a lowercase `the`. Both returned zero for reasons that had
+nothing to do with the content, and both would have shipped as findings in the
+audit report if the first run had been trusted.
+
+Zero results and no result look identical. The audit needed exactly the
+treatment it was applying: establish that the check can find something before
+believing it found nothing. That this happened *to the tooling auditing the
+repository that documents it* is not irony — it is the measurement. The pattern
+is not a set of ten mistakes that were made and learned from; it is the default
+state of any check nobody has forced to prove itself.

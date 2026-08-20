@@ -117,3 +117,24 @@ def test_no_secret_in_merged_output():
     blob = json.dumps(report.to_dict())
     for res in load("gitleaks.sarif")["runs"][0]["results"]:
         assert res["locations"][0]["physicalLocation"]["region"]["snippet"]["text"] not in blob
+
+
+# ---------------------------------------------------- cross-check wording ----
+def test_zero_package_cross_check_reads_as_two_sentences():
+    """The zero-package branch is the one a reader is most likely to meet.
+
+    The terminator used to hang off the `> 0` case, so the failing path ran two
+    sentences together: "0 packages resolvable Nothing resolves".
+    """
+    doc, _ = attest.attest(build("trivy-fs-empty.sarif", packages=0))
+    c = next(c for c in doc["cross_checks"] if c["name"] == "dependency resolution")
+    assert ". Nothing resolves" in c["detail"]      # terminated first sentence
+    assert "resolvable Nothing" not in c["detail"]  # the run-on it replaced
+    assert "lockfile Nothing" not in c["detail"]    # ...in the other clause too
+
+
+def test_resolved_cross_check_still_ends_cleanly():
+    doc, _ = attest.attest(build())
+    c = next(c for c in doc["cross_checks"] if c["name"] == "dependency resolution")
+    assert c["detail"].endswith(".")
+    assert "Nothing resolves" not in c["detail"]

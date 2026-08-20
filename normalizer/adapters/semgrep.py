@@ -131,9 +131,12 @@ class SemgrepAdapter:
                     reasons[sk.get("reason", "unknown")] = (
                         reasons.get(sk.get("reason", "unknown"), 0) + 1
                     )
-                detail = f"{len(skipped)} paths skipped: " + ", ".join(
-                    f"{k}={v}" for k, v in sorted(reasons.items())
-                )
+                # An empty skip list rendered as "0 paths skipped: " -- a
+                # trailing colon introducing nothing. The colon belongs to the
+                # list, so it only appears when there is a list.
+                breakdown = ", ".join(f"{k}={v}" for k, v in sorted(reasons.items()))
+                detail = (f"{len(skipped)} paths skipped: {breakdown}"
+                          if breakdown else "0 paths skipped")
         else:
             examined = run.probes.get("python_files_git_tracked")
             evidence = (

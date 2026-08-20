@@ -78,9 +78,14 @@ def cross_checks(coverages: dict[str, Coverage]) -> list[CrossCheck]:
         out.append(CrossCheck(
             name="dependency resolution",
             ok=trivy.examined > 0,
+            # The sentence terminator belongs to the first clause, not to the
+            # branch. Hanging it off the `> 0` case ran two sentences together
+            # in the zero-package path -- "0 packages resolvable Nothing
+            # resolves" -- which is the branch a reader is most likely to meet.
+            # Do not move it back inside the conditional.
             detail=(f"{trivy.examined} packages resolvable"
                     + (f" against {declared} in lockfile" if declared else "")
-		    + "."
+                    + "."
                     + ("" if trivy.examined > 0 else
                        " Nothing resolves -- SCA is a no-op reporting success.")),
         ))

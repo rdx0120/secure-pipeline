@@ -347,3 +347,24 @@ def test_manifest_detection_reports_what_exists(tmp_path):
     assert detect_manifests(tmp_path) == ["pyproject.toml"]
     (tmp_path / "uv.lock").write_text("version = 1\n")
     assert detect_manifests(tmp_path) == ["uv.lock", "pyproject.toml"]
+
+
+def test_empty_skip_list_has_no_dangling_colon():
+    """"0 paths skipped: " introduced a list that was not there."""
+    doc = load("semgrep.sarif")
+    metrics = {"paths": {"scanned": ["a.py"], "skipped": []}}
+    r = SemgrepAdapter().parse(ScanRun(
+        tool="semgrep", documents={"findings": doc, "metrics": metrics},
+        probes={"python_files_git_tracked": 1}))
+    assert r.coverage.detail == "0 paths skipped"
+    assert not r.coverage.detail.rstrip().endswith(":")
+
+
+def test_populated_skip_list_still_lists_reasons():
+    doc = load("semgrep.sarif")
+    metrics = {"paths": {"scanned": ["a.py"],
+                         "skipped": [{"reason": "semgrepignore_patterns_match"}] * 3}}
+    r = SemgrepAdapter().parse(ScanRun(
+        tool="semgrep", documents={"findings": doc, "metrics": metrics},
+        probes={"python_files_git_tracked": 1}))
+    assert r.coverage.detail == "3 paths skipped: semgrepignore_patterns_match=3"
