@@ -1,5 +1,5 @@
 {
- "_fixture_note": "Real OpenSSF Scorecard v5.5.0 output, captured with `scorecard --local` against this repository. Scores are genuine BUT LOCAL-ONLY: --local exercises just the checks that work offline, so this document holds 5 checks and an aggregate of 6.1. The real remote run over the GitHub API scores differently -- 3.6 across all 18 checks -- because the network checks (Branch-Protection, Code-Review, Signed-Releases, ...) only run there. Do not cite 6.1 as this repository's Scorecard score.",
+ "_fixture_note": "Real OpenSSF Scorecard v5.5.0 output, captured with `scorecard --local` against this repository at commit 851f7a8. LOCAL-ONLY: --local exercises just the checks that work offline, so this document holds 5 of the 18 checks and its aggregate reflects only those. The remote run over the GitHub API covers all 18 and scores differently. Neither number is this repository's current score: the aggregate moves as GitHub state changes, and it moved between two consecutive dispatches with no security-relevant code change. Treat any score in this file as a dated sample of THIS document, not as a standing fact about the repository -- the live figure is the Scorecard badge.",
  "date": "2026-08-20T04:35:26Z",
  "repo": {
   "name": "file:///tmp/t6",
