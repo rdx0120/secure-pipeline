@@ -44,16 +44,32 @@ Fixtures in `tests/` exercise it without needing an AWS account:
 | `plan-violating.json` | wildcard `sub`, public ACL, no encryption, no PAB — 5 failures, exit 1 |
 | `plan-no-sub.json` | no `:sub` condition at all — 1 failure, exit 1 |
 
-## Status: written and policy-verified, NOT applied
+## Status: applied
 
-`terraform apply` has **not** been run. This environment has no AWS credentials
-(`AWS_ACCESS_KEY_ID` is a proxy placeholder, and `~/.aws/config` carries no
-profile), and neither `terraform` nor `tofu` can be installed here — OpenTofu's
-`go.mod` carries replace directives that make `go install` refuse it, and
-`releases.hashicorp.com` is outside the network policy.
+This module is deployed against a real AWS account — **8 resources added, 0
+changed, 0 destroyed.** `outputs.tf` exposes the artifact bucket and the CI role
+ARN, and `.terraform.lock.hcl` is committed so the provider version is pinned.
 
-So this module is **verified against a policy, not operated**. Applying it
-requires running from a machine with credentials:
+**The plan was gated before apply, not after.** The plan was rendered to JSON and
+run through `policy/terraform.rego` via Conftest — 6 tests, 6 passed, 0 failures
+— and that same checked plan is the one that was applied. A saved-plan staleness
+error was hit partway through; the plan was regenerated, re-gated, and the
+re-checked plan applied.
+
+The deployed trust policy was then read by hand in the IAM console, to confirm
+what actually landed rather than infer it from the HCL:
+
+```
+aud = sts.amazonaws.com
+sub = repo:rdx0120/secure-pipeline:ref:refs/heads/main
+```
+
+Pinned to one repository *and* one branch — not `repo:rdx0120/*`. The live path
+is verified end to end: `.github/workflows/aws-oidc-smoke.yml` assumes the
+deployed role with `id-token: write` and no static AWS keys, calls STS, and
+writes an object to the artifact bucket.
+
+To reproduce from a machine with credentials:
 
 ```
 tofu init

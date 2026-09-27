@@ -447,4 +447,7 @@ treatment it was applying: establish that the check can find something before
 believing it found nothing. That this happened *to the tooling auditing the
 repository that documents it* is not irony — it is the measurement. The pattern
 is not a set of ten mistakes that were made and learned from; it is the default
-state of any check nobody has forced to prove itself.
+state of any check nobody has forced to prove itself. The audit item written
+specifically to catch stale pre-fix claims then missed one — `infra/README.md`
+still announced the Terraform module as "NOT applied" long after it was applied
+— in the file a reviewer evaluating that claim is most likely to open.
